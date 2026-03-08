@@ -1813,629 +1813,689 @@ function drawCockpitView(W, H) {
   });
   ctx.restore();
 
-  // ── A-PILLARS ──
-  ctx.fillStyle = '#080808';
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(W*0.18,0); ctx.lineTo(W*0.27,H*0.57); ctx.lineTo(0,H*0.61); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#080808';
-  ctx.beginPath(); ctx.moveTo(W,0); ctx.lineTo(W*0.82,0); ctx.lineTo(W*0.73,H*0.57); ctx.lineTo(W,H*0.61); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#1c1c1c'; ctx.lineWidth = 2;
+  // ── A-PILLARS (thick, realistic) ──
+  const pillarColor = '#060606';
+  ctx.fillStyle = pillarColor;
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(W*0.18,0); ctx.lineTo(W*0.27,H*0.57); ctx.lineTo(0,H*0.62); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = pillarColor;
+  ctx.beginPath(); ctx.moveTo(W,0); ctx.lineTo(W*0.82,0); ctx.lineTo(W*0.73,H*0.57); ctx.lineTo(W,H*0.62); ctx.closePath(); ctx.fill();
+  // Pillar highlight edge
+  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(W*0.18,0); ctx.lineTo(W*0.27,H*0.57); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(W*0.82,0); ctx.lineTo(W*0.73,H*0.57); ctx.stroke();
 
   // ── DASHBOARD BODY ──
   const dashY = H * 0.57;
-  ctx.save();
   const dashG = ctx.createLinearGradient(0, dashY, 0, H);
-  dashG.addColorStop(0, '#111'); dashG.addColorStop(0.15, '#0a0a0a'); dashG.addColorStop(1, '#020202');
+  dashG.addColorStop(0, '#0d0d0d'); dashG.addColorStop(0.2, '#080808'); dashG.addColorStop(1, '#020202');
   ctx.fillStyle = dashG;
-  // Full rectangle dashboard - fills entire bottom area
   ctx.fillRect(0, dashY, W, H - dashY);
-  // Decorative top edge line
-  ctx.strokeStyle = '#252525'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(0, dashY); ctx.lineTo(W, dashY); ctx.stroke();
-  // Subtle trapezoid highlight on top edge
-  ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0,H*0.61); ctx.lineTo(W*0.27,H*0.57); ctx.lineTo(W*0.73,H*0.57); ctx.lineTo(W,H*0.61); ctx.stroke();
-  // Section dividers
-  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(W*0.26, dashY); ctx.lineTo(W*0.26, H); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(W*0.56, dashY); ctx.lineTo(W*0.56, H); ctx.stroke();
 
-  // ════════════════════════════════════════════════════════════════════════
-  //  THREE-SECTION AUTHENTIC KITT DASHBOARD
-  //  LEFT (0..W*0.30) | CENTER (W*0.30..W*0.65) | RIGHT (W*0.65..W)
-  // ════════════════════════════════════════════════════════════════════════
-  const dT = dashY + 5, dB = H - 4, dH = dB - dT;
+  // Dashboard top curved edge
+  ctx.strokeStyle = '#1e1e1e'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, H*0.62); ctx.lineTo(W*0.27, H*0.57); ctx.lineTo(W*0.73, H*0.57); ctx.lineTo(W, H*0.62); ctx.stroke();
 
-  drawKITTLeftDash(4, dT, W * 0.26 - 4, dH);
-  drawKITTCenterDash(W * 0.26, dT, W * 0.30, dH);
-  drawKITTRightDash(W * 0.56 + 2, dT, W * 0.43, dH);
-
-  ctx.restore();
+  // ── DRAW ALL DASHBOARD SECTIONS ──
+  const dT = dashY + 4, dB = H - 3, dH = dB - dT;
+  // Layout: LEFT 28% | CENTER 26% | RIGHT 46%
+  const lW = W * 0.28, cW = W * 0.26, rW = W * 0.46;
+  drawKITTLeftDash(2, dT, lW - 2, dH);
+  drawKITTCenterDash(lW, dT, cW, dH);
+  drawKITTRightDash(lW + cW + 2, dT, rW - 4, dH);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  LEFT SECTION: MPH LED + Fuel/Time + Voice Meter + Status + Steering
+//  KITT DASHBOARD — LEFT SECTION
+//  Mirrors real KITT: MPH LED, RPM arc, fuel/time, voice meter, status rows
 // ═══════════════════════════════════════════════════════════════════════════════
 function drawKITTLeftDash(px, py, pw, ph) {
   ctx.save();
-
-  const cx = px + pw / 2;
-  let cy = py + 2;
+  const dB = py + ph;
+  let cy = py + 3;
 
   // ── MPH LABEL ──
-  ctx.fillStyle = '#ff2200';
-  ctx.font = 'bold 9px monospace'; ctx.textAlign = 'left';
-  ctx.fillText('MPH', px + 4, cy + 9); cy += 11;
+  ctx.fillStyle = '#ff3300';
+  ctx.font = 'bold 9px "Courier New", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('MPH', px + 4, cy + 8);
 
   // ── MPH BIG LED DISPLAY ──
-  const mphBoxW = pw * 0.72, mphBoxH = ph * 0.20;
-  const mphBx = px + 4;
+  const mphVal = Math.round(kitt.speed * 0.621371);
+  const mphStr = String(mphVal).padStart(3, '0');
+  cy += 10;
+  // LED background box
   ctx.fillStyle = '#0a0000';
-  ctx.fillRect(mphBx, cy, mphBoxW, mphBoxH);
-  ctx.strokeStyle = '#550000'; ctx.lineWidth = 1;
-  ctx.strokeRect(mphBx, cy, mphBoxW, mphBoxH);
-  // LED glow
-  ctx.fillStyle = '#ff2200';
-  ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 10;
-  ctx.font = `bold ${Math.floor(mphBoxH * 0.72)}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText(String(Math.round(kitt.speed)).padStart(3, ' '), mphBx + mphBoxW / 2, cy + mphBoxH - 5);
-  ctx.shadowBlur = 0;
-  cy += mphBoxH + 4;
+  ctx.fillRect(px + 2, cy, pw * 0.55, 32);
+  ctx.strokeStyle = '#330000'; ctx.lineWidth = 1;
+  ctx.strokeRect(px + 2, cy, pw * 0.55, 32);
+  // LED digits
+  drawLEDNumber(ctx, mphStr, px + 6, cy + 4, 24, '#ff2200');
+  cy += 35;
 
-  // ── FUEL / TIME DISPLAY ──
-  const fuelBoxH = ph * 0.09;
-  ctx.fillStyle = '#000800';
-  ctx.fillRect(px + 4, cy, pw - 8, fuelBoxH);
-  ctx.strokeStyle = '#003300'; ctx.lineWidth = 1;
-  ctx.strokeRect(px + 4, cy, pw - 8, fuelBoxH);
-  const fuelStr = kitt.fuelGals.toFixed(2).padStart(5, '0');
-  const timeStr = new Date(STATE.time * 1000).toISOString().substr(11, 8);
-  ctx.fillStyle = '#00ff44'; ctx.shadowColor = '#00ff44'; ctx.shadowBlur = 6;
-  ctx.font = `bold ${Math.floor(fuelBoxH * 0.55)}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText(fuelStr + '  ' + timeStr, px + pw / 2, cy + fuelBoxH - 3);
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#006600'; ctx.font = '5px monospace';
-  ctx.fillText('FUEL GALS', px + pw * 0.25, cy + fuelBoxH + 7);
-  cy += fuelBoxH + 10;
+  // ── FUEL GALS DISPLAY ──
+  const fuelStr = kitt.fuelGals ? kitt.fuelGals.toFixed(2) : '12.10';
+  const timeStr = formatTime(STATE.time);
+  ctx.fillStyle = '#0a0000';
+  ctx.fillRect(px + 2, cy, pw - 4, 14);
+  ctx.strokeStyle = '#220000'; ctx.lineWidth = 1;
+  ctx.strokeRect(px + 2, cy, pw - 4, 14);
+  ctx.fillStyle = '#ff4400'; ctx.font = '7px "Courier New", monospace'; ctx.textAlign = 'left';
+  ctx.fillText(fuelStr + '  ' + timeStr, px + 4, cy + 10);
+  cy += 16;
 
-  // ── VOICE SYNTHESIZER BARS ──
-  ctx.fillStyle = '#ff4400';
-  ctx.font = 'bold 6px monospace'; ctx.textAlign = 'left';
-  ctx.fillText('VOICE', px + 4, cy + 7); cy += 9;
+  // ── FUEL GALS LABEL ──
+  ctx.fillStyle = '#ff2200'; ctx.font = '6px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('FUEL GALS', px + pw * 0.28, cy + 6);
+  cy += 8;
 
-  const numBars = 10;
-  const barAreaW = pw - 8;
-  const barW = barAreaW / numBars - 1.5;
-  const maxBarH = ph * 0.12;
-  const voiceActive = dialogue.active;
-  for (let b = 0; b < numBars; b++) {
-    const bx = px + 4 + b * (barAreaW / numBars);
-    let barH;
+  // ── VOICE MODULATOR (vertical bars, animated) ──
+  const vmH = 22, vmW = pw - 4;
+  ctx.fillStyle = '#050505';
+  ctx.fillRect(px + 2, cy, vmW, vmH);
+  ctx.strokeStyle = '#1a1a00'; ctx.lineWidth = 1;
+  ctx.strokeRect(px + 2, cy, vmW, vmH);
+  const barCount = Math.floor(vmW / 5);
+  const voiceActive = dialogue.active && dialogue.speaker === 'KITT';
+  for (let b = 0; b < barCount; b++) {
+    const bx = px + 2 + b * 5;
+    let bh;
     if (voiceActive) {
-      barH = maxBarH * (0.25 + Math.abs(Math.sin(STATE.time * 18 + b * 1.1)) * 0.75);
+      bh = (Math.sin(b * 0.8 + STATE.time * 18) * 0.4 + 0.5) * vmH * 0.85;
+      bh = Math.max(2, bh);
     } else {
-      barH = maxBarH * (0.08 + Math.abs(Math.sin(STATE.time * 4 + b * 0.6)) * 0.12);
+      bh = 1 + Math.sin(b * 1.2) * 0.5;
     }
-    const segs = 7;
-    for (let s = 0; s < segs; s++) {
-      const segFrac = s / segs;
-      if (segFrac * maxBarH > barH) continue;
-      const segH = maxBarH / segs - 1;
-      const segY = cy + maxBarH - (s + 1) * (maxBarH / segs);
-      const col = segFrac < 0.5 ? '#00ff44' : segFrac < 0.78 ? '#ffaa00' : '#ff2200';
-      ctx.fillStyle = col;
-      if (voiceActive && segFrac > 0.6) { ctx.shadowColor = col; ctx.shadowBlur = 4; }
-      ctx.fillRect(bx, segY, barW, segH);
-      ctx.shadowBlur = 0;
-    }
+    const bColor = bh > vmH * 0.7 ? '#ff0000' : bh > vmH * 0.4 ? '#ffaa00' : '#00ff44';
+    ctx.fillStyle = bColor;
+    ctx.fillRect(bx, cy + vmH - bh, 3, bh);
   }
-  cy += maxBarH + 6;
+  cy += vmH + 3;
 
-  // ── SEPARATOR ──
-  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(px+2, cy); ctx.lineTo(px+pw-2, cy); ctx.stroke();
-  cy += 4;
-
-  // ── STATUS ROWS (surveillance / alert indicators) ──
-  const statRows = [
-    { label: 'SURVEILLANCE', on: true,  col: '#00ff44' },
-    { label: 'ALERT LVL ' + STATE.level, on: STATE.level > 1, col: '#ff8800' },
-    { label: 'COMMS',        on: dialogue.active, col: '#00aaff' },
-    { label: 'RADAR',        on: true,  col: '#ff44aa' },
+  // ── STATUS INDICATOR ROWS (4 rows of colored LEDs) ──
+  const statusRows = [
+    { label: 'SURVEILLANCE', dots: 8, color: '#00ff44', active: true },
+    { label: 'ALERT A',      dots: 8, color: '#ffaa00', active: STATE.health < 150 },
+    { label: 'ALERT B',      dots: 8, color: '#ff4400', active: STATE.health < 80 },
+    { label: 'CANCEL',       dots: 8, color: '#ff0000', active: false },
   ];
-  statRows.forEach(r => {
-    const pulse = r.on && (Math.floor(STATE.time * 2) % 2 === 0);
-    ctx.fillStyle = pulse ? r.col : '#1a1a1a';
-    if (pulse) { ctx.shadowColor = r.col; ctx.shadowBlur = 5; }
-    ctx.beginPath(); ctx.arc(px + 8, cy + 4, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = r.on ? '#aaa' : '#333';
-    ctx.font = '5px monospace'; ctx.textAlign = 'left';
-    ctx.fillText(r.label, px + 14, cy + 7);
-    cy += 10;
-  });
-  cy += 4;
-
-  // ── SHIELD / TURBO MINI BARS ──
-  const miniBarW = pw - 8;
-  [
-    { label: 'SHIELD', pct: kitt.health / KITT_MAX_HP, col: '#00ff44' },
-    { label: 'TURBO',  pct: kitt.turbo / TURBO_MAX,   col: '#00aaff' },
-    { label: 'SPM',    pct: kitt.spm / 100,            col: '#ff8800' },
-  ].forEach(b => {
+  statusRows.forEach(row => {
     ctx.fillStyle = '#333'; ctx.font = '5px monospace'; ctx.textAlign = 'left';
-    ctx.fillText(b.label, px + 4, cy + 5);
-    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(px + 4, cy + 6, miniBarW, 5);
-    ctx.fillStyle = b.col; ctx.fillRect(px + 4, cy + 6, miniBarW * b.pct, 5);
-    ctx.strokeStyle = '#222'; ctx.lineWidth = 0.5; ctx.strokeRect(px + 4, cy + 6, miniBarW, 5);
-    cy += 13;
+    ctx.fillText(row.label, px + 4, cy + 6);
+    for (let d = 0; d < row.dots; d++) {
+      const dx = px + pw * 0.42 + d * 7;
+      const lit = row.active && d < Math.floor(row.dots * (0.4 + Math.sin(STATE.time * 3 + d) * 0.3));
+      ctx.fillStyle = lit ? row.color : '#1a1a1a';
+      ctx.fillRect(dx, cy + 1, 5, 6);
+    }
+    cy += 9;
   });
-  cy += 2;
 
-  // ── STEERING WHEEL ──
-  const dB = py + ph;
-  const swR = Math.min(pw * 0.32, (dB - cy - 4) * 0.48);
-  if (swR > 10) {
-    drawKITTSteeringColumn(px + pw / 2, cy + swR * 0.3, pw, dB - cy - 4);
-  }
+  // ── STEERING WHEEL (bottom of left section) ──
+  const swCX = px + pw * 0.5;
+  const swCY = dB - 28;
+  const swR = Math.min(pw * 0.38, 30);
+  const steerAngle = (kitt.steer || 0) * 0.6;
+  ctx.save();
+  ctx.translate(swCX, swCY);
+  ctx.rotate(steerAngle);
+  // Outer ring
+  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(0, 0, swR, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(0, 0, swR, 0, Math.PI * 2); ctx.stroke();
+  // Spokes
+  ctx.strokeStyle = '#1e1e1e'; ctx.lineWidth = 2;
+  [0, Math.PI * 2/3, Math.PI * 4/3].forEach(a => {
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*swR*0.85, Math.sin(a)*swR*0.85); ctx.stroke();
+  });
+  // Center hub with KITT logo
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(0, 0, swR * 0.28, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#ff2200'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(0, 0, swR * 0.28, 0, Math.PI * 2); ctx.stroke();
+  // K letter
+  ctx.fillStyle = '#ff2200'; ctx.font = `bold ${Math.round(swR*0.28)}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('K', 0, 0);
+  ctx.restore();
 
   ctx.restore();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  CENTER SECTION: Button grid (AIR/OIL/S1/S2/P1-P4/AUTO CRUISE) + Scanner
+//  KITT DASHBOARD — CENTER SECTION
+//  Mirrors real KITT: overhead POWER/FUEL/IGNITORS, voice screen, AIR/OIL/S1/S2,
+//  P1-P4 buttons, AUTO CRUISE / NORMAL CRUISE / PURSUIT selectors, scanner
 // ═══════════════════════════════════════════════════════════════════════════════
 function drawKITTCenterDash(px, py, pw, ph) {
   ctx.save();
   const cx = px + pw / 2;
+  const dB = py + ph;
   let cy = py + 2;
 
-  // ── POWER STATUS INDICATORS (top row) ──
-  const topIndicators = [
-    { label: 'POWER',   on: true,  col: '#00ff44' },
-    { label: 'MIN RPM', on: kitt.rpm < 1200, col: '#ffaa00' },
-    { label: 'FUEL ON', on: kitt.fuelGals > 0.5, col: '#00ff44' },
-    { label: 'IGNITION',on: STATE.running, col: '#ff4400' },
-  ];
-  const indW = (pw - 6) / topIndicators.length;
-  topIndicators.forEach((ind, i) => {
-    const ix = px + 3 + i * indW;
-    ctx.fillStyle = ind.on ? ind.col : '#222222';
-    if (ind.on) { ctx.shadowColor = ind.col; ctx.shadowBlur = 5; }
-    ctx.fillRect(ix, cy, indW - 2, 8);
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = ind.on ? '#000' : '#333';
-    ctx.font = `bold ${Math.max(4, indW * 0.22)}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText(ind.label, ix + (indW-2)/2, cy + 6);
+  // ── OVERHEAD CONSOLE: POWER / FUEL ON / IGNITORS ──
+  const ovH = 14;
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(px + 2, cy, pw - 4, ovH);
+  ctx.strokeStyle = '#222'; ctx.lineWidth = 1;
+  ctx.strokeRect(px + 2, cy, pw - 4, ovH);
+  const ovLabels = ['POWER', 'FUEL ON', 'IGNITORS'];
+  const ovColors = ['#ff2200', '#00ff44', '#ffaa00'];
+  const ovW = (pw - 4) / 3;
+  ovLabels.forEach((lbl, i) => {
+    const bx = px + 2 + i * ovW;
+    const lit = STATE.running || (DASH_STARTUP && DASH_STARTUP.phase > i);
+    ctx.fillStyle = lit ? ovColors[i] : '#1a1a1a';
+    ctx.fillRect(bx + 2, cy + 2, ovW - 4, ovH - 4);
+    ctx.fillStyle = lit ? '#000' : '#444';
+    ctx.font = '5px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(lbl, bx + ovW/2, cy + 9);
   });
-  cy += 12;
+  cy += ovH + 3;
 
-  // ── KITT SCANNER BAR ──
-  const scanW = pw - 6, scanH = 14;
-  ctx.fillStyle = '#0d0000';
-  ctx.fillRect(px + 3, cy - 1, scanW, scanH + 2);
-  ctx.strokeStyle = '#330000'; ctx.lineWidth = 1;
-  ctx.strokeRect(px + 3, cy - 1, scanW, scanH + 2);
-  const numSegs = 18;
-  const segW2 = scanW / numSegs - 1;
-  const scanPos = (Math.sin(STATE.time * 9) + 1) / 2;
-  for (let i = 0; i < numSegs; i++) {
-    const sx = px + 3 + i * (scanW / numSegs);
-    const dist = Math.abs(i / (numSegs - 1) - scanPos);
-    const bright = Math.max(0, 1 - dist * 3.0);
-    const rv = Math.floor(bright * 255);
-    ctx.fillStyle = `rgb(${rv},0,0)`;
-    if (bright > 0.6) { ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 6; }
-    ctx.fillRect(sx, cy, segW2, scanH);
-    ctx.shadowBlur = 0;
+  // ── VOICE MODULATOR SCREEN (center screen) ──
+  const vmW = pw - 6, vmH = 28;
+  ctx.fillStyle = '#000a00';
+  ctx.fillRect(px + 3, cy, vmW, vmH);
+  ctx.strokeStyle = '#004400'; ctx.lineWidth = 1;
+  ctx.strokeRect(px + 3, cy, vmW, vmH);
+  // Scanner bar (horizontal sweep)
+  const scanPos = (Math.sin(STATE.time * 2) * 0.5 + 0.5) * vmW;
+  const scanGrad = ctx.createLinearGradient(px + 3 + scanPos - 20, 0, px + 3 + scanPos + 20, 0);
+  scanGrad.addColorStop(0, 'rgba(255,0,0,0)');
+  scanGrad.addColorStop(0.5, 'rgba(255,0,0,0.9)');
+  scanGrad.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.fillStyle = scanGrad;
+  ctx.fillRect(px + 3, cy + 2, vmW, vmH - 4);
+  // Voice bars
+  const voiceActive = dialogue.active;
+  const barCount2 = Math.floor(vmW / 4);
+  for (let b = 0; b < barCount2; b++) {
+    const bx = px + 3 + b * 4;
+    let bh;
+    if (voiceActive) {
+      bh = (Math.sin(b * 0.9 + STATE.time * 20) * 0.45 + 0.5) * vmH * 0.9;
+      bh = Math.max(2, bh);
+    } else {
+      bh = 2 + Math.abs(Math.sin(b * 1.5 + STATE.time * 1.5)) * 4;
+    }
+    const col = bh > vmH * 0.7 ? '#ff0000' : bh > vmH * 0.45 ? '#ff6600' : '#ff2200';
+    ctx.fillStyle = col;
+    ctx.fillRect(bx, cy + vmH - bh, 2, bh);
   }
-  cy += scanH + 6;
+  cy += vmH + 3;
 
-  // ── BUTTON GRID LAYOUT (matching reference image exactly) ──
-  // Row 1: [AIR] [S1]
-  // Row 2: [OIL] [S2]
-  // Row 3: [P1] [AUTO CRUISE] [P3]
-  // Row 4: [P2] [NORMAL/PURSUIT] [P4]
-  const btnAreaW = pw - 6;
-  const btnAreaH = ph * 0.52;
-  const btnAreaX = px + 3;
-  const btnAreaY = cy;
+  // ── CIRCLE BUTTONS: AIR / OIL / S1 / S2 ──
+  const circleRow = [
+    { lbl:'AIR', color:'#ffcc00', active: true },
+    { lbl:'OIL', color:'#ffcc00', active: kitt.oilPsi > 40 },
+    { lbl:'S1',  color:'#00ccff', active: false },
+    { lbl:'S2',  color:'#00ccff', active: false },
+  ];
+  const circR = 8, circSpacing = pw / 4;
+  circleRow.forEach((btn, i) => {
+    const bx = px + circSpacing * i + circSpacing / 2;
+    const by = cy + circR + 1;
+    ctx.beginPath(); ctx.arc(bx, by, circR, 0, Math.PI * 2);
+    ctx.fillStyle = btn.active ? btn.color : '#1a1a00';
+    ctx.fill();
+    ctx.strokeStyle = btn.active ? '#ffffff' : '#333';
+    ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = btn.active ? '#000' : '#555';
+    ctx.font = 'bold 6px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(btn.lbl, bx, by);
+  });
+  cy += circR * 2 + 5;
 
-  // Yellow circle buttons: AIR, OIL (left column)
-  const circR = Math.min(btnAreaW * 0.10, btnAreaH * 0.10);
-  const circX = btnAreaX + circR + 2;
-  const circY1 = btnAreaY + circR + 2;
-  const circY2 = btnAreaY + circR * 3 + 6;
-  drawCircleButton(circX, circY1, circR, 'AIR', '#ffee00', false);
-  drawCircleButton(circX, circY2, circR, 'OIL', '#ffee00', kitt.oilPsi < 30);
+  // ── MODE BUTTONS: AUTO CRUISE / NORMAL CRUISE / PURSUIT ──
+  const modeButtons = [
+    { lbl:'AUTO\nCRUISE', color:'#ff6600', active: STATE.weaponMode === 'auto' },
+    { lbl:'NORMAL',       color:'#ff4400', active: !STATE.weaponMode || STATE.weaponMode === 'normal' },
+    { lbl:'PURSUIT',      color:'#ff0000', active: STATE.weaponMode === 'pursuit' },
+  ];
+  const mbW = (pw - 6) / 3, mbH = 16;
+  modeButtons.forEach((btn, i) => {
+    const bx = px + 3 + i * mbW;
+    ctx.fillStyle = btn.active ? btn.color : '#1a0800';
+    ctx.fillRect(bx, cy, mbW - 2, mbH);
+    ctx.strokeStyle = btn.active ? '#ffaa00' : '#330000';
+    ctx.lineWidth = 1; ctx.strokeRect(bx, cy, mbW - 2, mbH);
+    ctx.fillStyle = btn.active ? '#000' : '#555';
+    ctx.font = '5px monospace'; ctx.textAlign = 'center';
+    const lines = btn.lbl.split('\n');
+    lines.forEach((line, li) => ctx.fillText(line, bx + mbW/2, cy + 5 + li * 7));
+  });
+  cy += mbH + 3;
 
-  // S1, S2 buttons (right of AIR/OIL)
-  const sX = btnAreaX + circR * 2 + 8;
-  const sBtnW = btnAreaW * 0.18, sBtnH = circR * 1.4;
-  drawRectButton(sX, circY1 - sBtnH/2, sBtnW, sBtnH, 'S1', '#ff4400', STATE.weaponMode === 0);
-  drawRectButton(sX, circY2 - sBtnH/2, sBtnW, sBtnH, 'S2', '#ff4400', STATE.weaponMode === 1);
+  // ── P1 / P2 / P3 / P4 BUTTONS ──
+  const pButtons = ['P1','P2','P3','P4'];
+  const pbW = (pw - 6) / 4, pbH = 12;
+  pButtons.forEach((lbl, i) => {
+    const bx = px + 3 + i * pbW;
+    const active = i === 0 && STATE.running;
+    ctx.fillStyle = active ? '#ff4400' : '#1a0800';
+    ctx.fillRect(bx, cy, pbW - 2, pbH);
+    ctx.strokeStyle = '#330000'; ctx.lineWidth = 1;
+    ctx.strokeRect(bx, cy, pbW - 2, pbH);
+    ctx.fillStyle = active ? '#000' : '#555';
+    ctx.font = '6px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(lbl, bx + pbW/2, cy + 8);
+  });
+  cy += pbH + 3;
 
-  // P1-P4 buttons (bottom left/right)
-  const pBtnW = btnAreaW * 0.16, pBtnH = btnAreaH * 0.12;
-  const pY1 = btnAreaY + circR * 5 + 10;
-  const pY2 = pY1 + pBtnH + 4;
-  drawRectButton(btnAreaX, pY1, pBtnW, pBtnH, 'P1', '#ff8800', false);
-  drawRectButton(btnAreaX, pY2, pBtnW, pBtnH, 'P2', '#ff8800', false);
-  drawRectButton(btnAreaX + btnAreaW - pBtnW, pY1, pBtnW, pBtnH, 'P3', '#ff8800', false);
-  drawRectButton(btnAreaX + btnAreaW - pBtnW, pY2, pBtnW, pBtnH, 'P4', '#ff8800', false);
+  // ── KITT LOGO (center emblem) ──
+  const logoR = 10;
+  const logoCX = cx, logoCY = cy + logoR + 2;
+  ctx.beginPath(); ctx.arc(logoCX, logoCY, logoR, 0, Math.PI * 2);
+  ctx.fillStyle = '#0a0000'; ctx.fill();
+  ctx.strokeStyle = '#ff2200'; ctx.lineWidth = 1.5; ctx.stroke();
+  // Winged K
+  ctx.fillStyle = '#ff2200'; ctx.font = `bold ${logoR}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('K', logoCX, logoCY);
+  cy += logoR * 2 + 5;
 
-  // AUTO CRUISE / NORMAL CRUISE / PURSUIT (center column)
-  const cruiseBtnW = btnAreaW * 0.40, cruiseBtnH = pBtnH * 0.85;
-  const cruiseX = btnAreaX + (btnAreaW - cruiseBtnW) / 2;
-  drawRectButton(cruiseX, pY1 - cruiseBtnH - 2, cruiseBtnW, cruiseBtnH, 'AUTO CRUISE', '#ff8800', kitt.speed > 60);
-  drawRectButton(cruiseX, pY1, cruiseBtnW, cruiseBtnH, 'NORMAL', '#ff4400', !kitt.boosting && !kitt.spmActive);
-  drawRectButton(cruiseX, pY1 + cruiseBtnH + 3, cruiseBtnW, cruiseBtnH, 'PURSUIT', '#ff2200', kitt.boosting || kitt.spmActive);
+  // ── SCANNER BAR (bottom) ──
+  const scanBarH = 6;
+  const scanBarW = pw - 4;
+  ctx.fillStyle = '#050505';
+  ctx.fillRect(px + 2, cy, scanBarW, scanBarH);
+  const scanX = ((STATE.time * 80) % (scanBarW * 2));
+  const scanXPos = scanX < scanBarW ? scanX : scanBarW * 2 - scanX;
+  const scanG2 = ctx.createLinearGradient(px + 2 + scanXPos - 15, 0, px + 2 + scanXPos + 15, 0);
+  scanG2.addColorStop(0, 'rgba(255,0,0,0)');
+  scanG2.addColorStop(0.5, '#ff0000');
+  scanG2.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.fillStyle = scanG2;
+  ctx.fillRect(px + 2, cy, scanBarW, scanBarH);
+  cy += scanBarH + 2;
 
-  cy = pY2 + pBtnH + 8;
-
-  // ── GEAR INDICATOR ──
-  ctx.fillStyle = '#333'; ctx.font = '6px monospace'; ctx.textAlign = 'left';
-  ctx.fillText('GEAR', px + 4, cy + 7);
-  ctx.fillStyle = '#001200'; ctx.fillRect(px + 28, cy, 22, 12);
-  ctx.strokeStyle = '#00ff44'; ctx.lineWidth = 1; ctx.strokeRect(px + 28, cy, 22, 12);
-  ctx.fillStyle = '#00ff44'; ctx.shadowColor = '#00ff44'; ctx.shadowBlur = 5;
-  ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
-  ctx.fillText(kitt.gear, px + 39, cy + 10);
-  ctx.shadowBlur = 0;
-  cy += 16;
-
-  // ── SCORE DISPLAY ──
-  ctx.fillStyle = '#333'; ctx.font = '6px monospace'; ctx.textAlign = 'left';
-  ctx.fillText('SCORE', px + 4, cy + 7);
-  ctx.fillStyle = '#001200'; ctx.fillRect(px + 4, cy + 8, pw - 8, 12);
-  ctx.strokeStyle = '#00ff44'; ctx.lineWidth = 1; ctx.strokeRect(px + 4, cy + 8, pw - 8, 12);
-  ctx.fillStyle = '#00ff44'; ctx.shadowColor = '#00ff44'; ctx.shadowBlur = 5;
-  ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
-  ctx.fillText(String(STATE.score).padStart(7, '0'), cx, cy + 18);
-  ctx.shadowBlur = 0;
+  // ── SPM / SHIELD / TURBO BARS ──
+  const barDefs = [
+    { lbl:'SPM',    val: STATE.spm / 100,        color:'#00ff44' },
+    { lbl:'SHIELD', val: kitt.health / kitt.maxHealth, color:'#00aaff' },
+    { lbl:'TURBO',  val: kitt.turboCharge / 100, color:'#ff8800' },
+  ];
+  const barH2 = 7, barW2 = pw - 4;
+  barDefs.forEach(bar => {
+    ctx.fillStyle = '#333'; ctx.font = '5px monospace'; ctx.textAlign = 'left';
+    ctx.fillText(bar.lbl, px + 4, cy + 6);
+    const bx = px + 24, bw = barW2 - 22;
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(bx, cy, bw, barH2);
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 1; ctx.strokeRect(bx, cy, bw, barH2);
+    const fillW = Math.max(0, Math.min(1, bar.val)) * bw;
+    if (fillW > 0) {
+      const bg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+      bg.addColorStop(0, bar.color); bg.addColorStop(1, bar.color + '88');
+      ctx.fillStyle = bg;
+      ctx.fillRect(bx, cy + 1, fillW, barH2 - 2);
+    }
+    cy += barH2 + 2;
+  });
 
   ctx.restore();
 }
 
-function drawCircleButton(cx, cy, r, label, col, active) {
-  ctx.fillStyle = active ? col : '#1c1800';
-  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
-  if (active) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = active ? '#000' : col;
-  ctx.font = `bold ${Math.max(5, r * 0.55)}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText(label, cx, cy + r * 0.35);
-}
-
-function drawRectButton(bx, by, bw, bh, label, col, active) {
-  ctx.fillStyle = active ? col : '#111108';
-  ctx.strokeStyle = active ? col : '#333'; ctx.lineWidth = 1;
-  if (active) { ctx.shadowColor = col; ctx.shadowBlur = 6; }
-  ctx.fillRect(bx, by, bw, bh);
-  ctx.strokeRect(bx, by, bw, bh);
-  ctx.shadowBlur = 0;
-  // LED dot
-  ctx.fillStyle = active ? '#000' : col;
-  ctx.beginPath(); ctx.arc(bx + 5, by + bh/2, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = active ? '#000' : col;
-  ctx.font = `bold ${Math.max(5, bh * 0.38)}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText(label, bx + bw / 2, by + bh * 0.72);
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
-//  RIGHT SECTION: RPM arc gauge + readouts + dual camera screens
+//  KITT DASHBOARD — RIGHT SECTION
+//  Mirrors real KITT: RPM arc gauge + LED readout, multi-color button grid,
+//  COMPUTER PRINTOUT label, dual live camera screens
 // ═══════════════════════════════════════════════════════════════════════════════
 function drawKITTRightDash(px, py, pw, ph) {
   ctx.save();
   const cx = px + pw / 2;
+  const dB = py + ph;
   let cy = py + 2;
 
-  // ── RPM ARC GAUGE (dot arc like reference image) ──
-  const arcCX = cx;
-  const arcCY = cy + ph * 0.18;
-  const arcR  = Math.min(pw * 0.38, ph * 0.20);
-
-  // Arc labels: 0, 1000, 3000, 5000, 9000
-  const rpmLabels = [0, 1, 3, 5, 9]; // thousands
-  const arcStart = Math.PI * 0.75, arcEnd = Math.PI * 2.25;
-  const arcSpan = arcEnd - arcStart;
-
-  // Draw dot arc (green dots, red in redline zone)
-  const numDots = 36;
-  for (let d = 0; d < numDots; d++) {
-    const frac = d / (numDots - 1);
-    const angle = arcStart + arcSpan * frac;
-    const rpmVal = frac * 9000;
-    const isLit = rpmVal <= kitt.rpm;
-    const isRedline = frac > 0.82; // 7380+ RPM
-    const dotCol = isRedline ? (isLit ? '#ff2200' : '#330000') : (isLit ? '#00ff44' : '#003300');
-    const dotR = d % 3 === 0 ? 3.5 : 2.5; // larger dots at major marks
-    ctx.fillStyle = dotCol;
-    if (isLit) { ctx.shadowColor = dotCol; ctx.shadowBlur = isRedline ? 8 : 4; }
+  // ── RPM ARC GAUGE (top-right, green dot arc) ──
+  const arcCX = px + pw * 0.72, arcCY = cy + 28, arcR = 26;
+  // RPM scale labels
+  const rpmLabels = ['1000','3000','5000','9000'];
+  ctx.fillStyle = '#00aa44'; ctx.font = '5px monospace'; ctx.textAlign = 'center';
+  rpmLabels.forEach((lbl, i) => {
+    const a = Math.PI * (0.75 + i * 0.5 / 3);
+    ctx.fillText(lbl, arcCX + Math.cos(a) * (arcR + 8), arcCY + Math.sin(a) * (arcR + 8));
+  });
+  // Arc dots
+  const rpmNorm = Math.min(1, (kitt.rpm || 800) / 9000);
+  const dotCount = 24;
+  for (let d = 0; d < dotCount; d++) {
+    const a = Math.PI * 0.75 + (d / (dotCount - 1)) * Math.PI * 1.5;
+    const lit = d / dotCount < rpmNorm;
+    const dotColor = d > dotCount * 0.85 ? '#ff0000' : d > dotCount * 0.65 ? '#ffaa00' : '#00ff44';
+    ctx.fillStyle = lit ? dotColor : '#0a1a0a';
     ctx.beginPath();
-    ctx.arc(arcCX + Math.cos(angle) * arcR, arcCY + Math.sin(angle) * arcR, dotR, 0, Math.PI * 2);
+    ctx.arc(arcCX + Math.cos(a) * arcR, arcCY + Math.sin(a) * arcR, 2.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
   }
 
-  // Arc labels
-  ctx.fillStyle = '#888'; ctx.font = '6px monospace'; ctx.textAlign = 'center';
-  rpmLabels.forEach((v, i) => {
-    const frac = (v * 1000) / 9000;
-    const angle = arcStart + arcSpan * frac;
-    const lx = arcCX + Math.cos(angle) * (arcR + 10);
-    const ly = arcCY + Math.sin(angle) * (arcR + 10);
-    ctx.fillText(v === 0 ? '0' : v * 1000, lx, ly);
-  });
+  // ── RPM DIGITAL DISPLAY ──
+  const rpmStr = String(Math.round(kitt.rpm || 800)).padStart(4, '0');
+  ctx.fillStyle = '#0a0000';
+  ctx.fillRect(px + pw * 0.45, cy + 10, pw * 0.22, 24);
+  ctx.strokeStyle = '#220000'; ctx.lineWidth = 1;
+  ctx.strokeRect(px + pw * 0.45, cy + 10, pw * 0.22, 24);
+  drawLEDNumber(ctx, rpmStr, px + pw * 0.46, cy + 14, 18, '#ff2200');
 
-  // ── RPM BIG LED DISPLAY (inside arc) ──
-  const rpmBoxW = arcR * 1.1, rpmBoxH = arcR * 0.52;
-  const rpmBx = arcCX - rpmBoxW / 2, rpmBy = arcCY - rpmBoxH / 2 + 4;
-  ctx.fillStyle = '#150000';
-  ctx.fillRect(rpmBx, rpmBy, rpmBoxW, rpmBoxH);
-  ctx.strokeStyle = '#660000'; ctx.lineWidth = 1;
-  ctx.strokeRect(rpmBx, rpmBy, rpmBoxW, rpmBoxH);
-  const rpmDisplay = Math.round(kitt.rpm);
-  const isRedlining = kitt.rpm > 7500;
-  ctx.fillStyle = isRedlining ? '#ff6600' : '#ff2200';
-  ctx.shadowColor = isRedlining ? '#ff6600' : '#ff2200'; ctx.shadowBlur = 10;
-  ctx.font = `bold ${Math.floor(rpmBoxH * 0.65)}px monospace`;
+  // ── RPM LABEL ──
+  ctx.fillStyle = '#ff3300'; ctx.font = 'bold 8px "Courier New", monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(String(rpmDisplay).padStart(4, ' '), arcCX, rpmBy + rpmBoxH - 4);
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#ff4400'; ctx.font = '6px monospace';
-  ctx.fillText('RPM', arcCX + rpmBoxW * 0.3, rpmBy + 8);
+  ctx.fillText('RPM', px + pw * 0.56, cy + 8);
+  cy += arcCY - py + arcR + 8;
 
-  cy = arcCY + arcR + 12;
-
-  // ── READOUT GRID: INLET°F, TEMP°F, AMP, OIL PSI, BOOST ──
+  // ── READOUT GRID (INLET°F, TEMP°F, AMP, OIL PSI, BOOST) ──
   const readouts = [
-    { label: 'INLET °F',  val: Math.round(kitt.inletTemp),   col: '#ff4400' },
-    { label: 'INLET °F',  val: Math.round(kitt.inletTemp + 3), col: '#ff4400' },
-    { label: 'TEMP °F',   val: Math.round(kitt.tempF),        col: '#ffaa00' },
-    { label: 'AMP',       val: kitt.ampere.toFixed(1),        col: '#00ff44' },
-    { label: 'OIL PSI',   val: Math.round(kitt.oilPsi),       col: '#00aaff' },
-    { label: 'BOOST',     val: kitt.boostPsi.toFixed(1),      col: '#ff8800' },
+    { lbl:'INLET °F', val: Math.round(kitt.tempF || 180) },
+    { lbl:'INLET °F', val: Math.round((kitt.tempF || 180) + 5) },
+    { lbl:'TEMP °F',  val: Math.round((kitt.tempF || 180) - 10) },
+    { lbl:'AMP',      val: Math.round(kitt.ampere || 14) },
+    { lbl:'OIL PSI',  val: Math.round(kitt.oilPsi || 55) },
+    { lbl:'BOOST',    val: Math.round(kitt.boost || 0) },
   ];
-  const cols2 = 2, rows2 = Math.ceil(readouts.length / cols2);
-  const rdW = (pw - 6) / cols2, rdH = Math.min(18, (ph * 0.30) / rows2);
+  const rdW = pw / 2, rdH = 11;
   readouts.forEach((r, i) => {
-    const col = i % cols2, row = Math.floor(i / cols2);
-    const rx = px + 3 + col * rdW, ry = cy + row * rdH;
-    // Box
-    ctx.fillStyle = '#0d0d08';
-    ctx.fillRect(rx, ry, rdW - 2, rdH - 1);
-    ctx.strokeStyle = '#2a2a1a'; ctx.lineWidth = 0.5;
-    ctx.strokeRect(rx, ry, rdW - 2, rdH - 1);
-    // LED bar
-    const barPct = Math.min(1, parseFloat(r.val) / (r.label === 'RPM' ? 9000 : r.label === 'BOOST' ? 20 : r.label === 'AMP' ? 20 : r.label === 'OIL PSI' ? 80 : r.label === 'TEMP °F' ? 250 : 120));
-    const barW3 = (rdW - 6) * barPct;
-    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(rx + 2, ry + rdH - 5, rdW - 6, 3);
-    ctx.fillStyle = r.col; ctx.fillRect(rx + 2, ry + rdH - 5, barW3, 3);
-    // Label
-    ctx.fillStyle = '#888'; ctx.font = '5px monospace'; ctx.textAlign = 'left';
-    ctx.fillText(r.label, rx + 3, ry + 7);
-    // Value
-    ctx.fillStyle = r.col; ctx.shadowColor = r.col; ctx.shadowBlur = 4;
-    ctx.font = `bold ${Math.max(6, rdH * 0.42)}px monospace`;
-    ctx.textAlign = 'right';
-    ctx.fillText(r.val, rx + rdW - 4, ry + rdH - 6);
-    ctx.shadowBlur = 0;
+    const col = i % 2, row = Math.floor(i / 2);
+    const rx = px + col * rdW + 2;
+    const ry = cy + row * (rdH + 2);
+    ctx.fillStyle = '#080808';
+    ctx.fillRect(rx, ry, rdW - 4, rdH);
+    ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1;
+    ctx.strokeRect(rx, ry, rdW - 4, rdH);
+    ctx.fillStyle = '#ff4400'; ctx.font = '5px monospace'; ctx.textAlign = 'left';
+    ctx.fillText(r.lbl, rx + 2, ry + 7);
+    ctx.fillStyle = '#ff2200'; ctx.font = '6px "Courier New", monospace'; ctx.textAlign = 'right';
+    ctx.fillText(r.val, rx + rdW - 6, ry + 8);
+    // Bar indicator
+    const barMax = r.lbl === 'AMP' ? 20 : r.lbl === 'BOOST' ? 100 : 300;
+    const barFrac = Math.min(1, r.val / barMax);
+    ctx.fillStyle = '#1a0000'; ctx.fillRect(rx + 2, ry + rdH - 3, rdW - 8, 2);
+    ctx.fillStyle = barFrac > 0.8 ? '#ff0000' : '#ff6600';
+    ctx.fillRect(rx + 2, ry + rdH - 3, (rdW - 8) * barFrac, 2);
   });
-  cy += rows2 * rdH + 6;
+  cy += 3 * (rdH + 2) + 4;
 
-  // ── DUAL CAMERA SCREENS ──
-  const camH = (ph - (cy - py) - 6) / 2 - 3;
-  if (camH > 15) {
-    drawCameraScreen(px + 2, cy, pw - 4, camH, 'REAR', drawRearCameraView);
-    cy += camH + 4;
-    drawCameraScreen(px + 2, cy, pw - 4, camH, 'SIDE-L', drawSideCameraView);
+  // ── MULTI-COLOR BUTTON GRID (matches real KITT right panel) ──
+  // 6 rows × 8 cols of small colored buttons
+  const btnColors = [
+    ['#ff0000','#ff0000','#ffaa00','#ffaa00','#00ff44','#00ff44','#00aaff','#00aaff'],
+    ['#ff4400','#ff4400','#ffcc00','#ffcc00','#00ff88','#00ff88','#0088ff','#0088ff'],
+    ['#ff0000','#ffaa00','#ffaa00','#ff0000','#00ff44','#00aaff','#00aaff','#00ff44'],
+    ['#ff6600','#ff6600','#ff0000','#ffcc00','#00ff44','#00ff88','#0088ff','#00aaff'],
+    ['#ff0000','#ff4400','#ffaa00','#ff0000','#00ff44','#00ff44','#00aaff','#0088ff'],
+    ['#ff2200','#ff6600','#ffcc00','#ffaa00','#00ff88','#00aaff','#0088ff','#00ff44'],
+  ];
+  const btnW = (pw - 4) / 8, btnH = 8;
+  btnColors.forEach((row, ri) => {
+    row.forEach((color, ci) => {
+      const bx = px + 2 + ci * btnW;
+      const by = cy + ri * (btnH + 1);
+      // Startup animation: buttons light up sequentially
+      const startupLit = DASH_STARTUP && DASH_STARTUP.phase >= 3 &&
+        (ri * 8 + ci) <= DASH_STARTUP.btnProgress;
+      const normalLit = !DASH_STARTUP && STATE.running;
+      const lit = startupLit || normalLit;
+      ctx.fillStyle = lit ? color : '#0a0a0a';
+      ctx.fillRect(bx, by, btnW - 1, btnH);
+      if (lit) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 0.5;
+        ctx.strokeRect(bx, by, btnW - 1, btnH);
+      }
+    });
+  });
+  cy += 6 * (btnH + 1) + 3;
+
+  // ── SURVEILLANCE MODE / COMPUTER PRINTOUT LABEL ──
+  ctx.fillStyle = '#333'; ctx.font = '5px monospace'; ctx.textAlign = 'left';
+  ctx.fillText('SURVEILLANCE MODE', px + 2, cy + 6);
+  ctx.textAlign = 'right';
+  ctx.fillText('COMPUTER PRINTOUT', px + pw - 2, cy + 6);
+  cy += 9;
+
+  // ── DUAL LIVE CAMERA SCREENS ──
+  const camW = pw * 0.46, camH = dB - cy - 2;
+  if (camH > 20) {
+    // LEFT CAMERA: REAR VIEW
+    const cam1X = px + 2, cam1Y = cy;
+    ctx.fillStyle = '#000a00';
+    ctx.fillRect(cam1X, cam1Y, camW - 2, camH);
+    ctx.strokeStyle = '#00aa44'; ctx.lineWidth = 1;
+    ctx.strokeRect(cam1X, cam1Y, camW - 2, camH);
+    // Render rear view (simplified pseudo-3D looking backward)
+    drawMiniCameraView(cam1X + 1, cam1Y + 1, camW - 4, camH - 2, 'rear');
+    ctx.fillStyle = '#00ff44'; ctx.font = '5px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('REAR', cam1X + 2, cam1Y + 8);
+
+    // RIGHT CAMERA: SIDE VIEW
+    const cam2X = px + pw * 0.52, cam2Y = cy;
+    ctx.fillStyle = '#000a00';
+    ctx.fillRect(cam2X, cam2Y, camW - 2, camH);
+    ctx.strokeStyle = '#00aa44'; ctx.lineWidth = 1;
+    ctx.strokeRect(cam2X, cam2Y, camW - 2, camH);
+    drawMiniCameraView(cam2X + 1, cam2Y + 1, camW - 4, camH - 2, 'side');
+    ctx.fillStyle = '#00ff44'; ctx.font = '5px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('SIDE', cam2X + 2, cam2Y + 8);
   }
 
   ctx.restore();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  STEERING COLUMN (shared by left dash)
+//  MINI CAMERA VIEW RENDERER (for dashboard screens)
 // ─────────────────────────────────────────────────────────────────────────────
-function drawKITTSteeringColumn(cx, topY, availW, availH) {
+function drawMiniCameraView(x, y, w, h, type) {
   ctx.save();
-  ctx.translate(cx, topY);
-  const steerAngle = kitt.steer * 0.65;
-  const colH = availH * 0.8;
-  const wheelR = Math.min(availW * 0.28, availH * 0.52);
-  const colShift = kitt.steer * 10;
-  ctx.save();
-  ctx.translate(colShift, 0);
-  // Column shaft
-  const colGrad = ctx.createLinearGradient(-8, 0, 8, 0);
-  colGrad.addColorStop(0, '#1a1a1a'); colGrad.addColorStop(0.5, '#333'); colGrad.addColorStop(1, '#1a1a1a');
-  ctx.fillStyle = colGrad;
-  ctx.beginPath();
-  ctx.moveTo(-9, 0); ctx.lineTo(-5, colH * 0.55); ctx.lineTo(5, colH * 0.55); ctx.lineTo(9, 0);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#111'; ctx.lineWidth = 1; ctx.stroke();
-  // Wheel
-  ctx.translate(0, colH * 0.5);
-  ctx.rotate(steerAngle);
-  // Rim shadow
-  ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 14;
-  ctx.strokeStyle = '#0a0a0a'; ctx.lineWidth = wheelR * 0.22 + 3;
-  ctx.beginPath(); ctx.arc(0, 0, wheelR, 0, Math.PI * 2); ctx.stroke();
-  ctx.shadowBlur = 0;
-  // Rim
-  const rimGrad = ctx.createLinearGradient(-wheelR, -wheelR, wheelR, wheelR);
-  rimGrad.addColorStop(0, '#1a1a1a'); rimGrad.addColorStop(0.4, '#333'); rimGrad.addColorStop(0.6, '#3a3a3a'); rimGrad.addColorStop(1, '#1a1a1a');
-  ctx.strokeStyle = rimGrad; ctx.lineWidth = wheelR * 0.18;
-  ctx.beginPath(); ctx.arc(0, 0, wheelR, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = 'rgba(70,70,70,0.4)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(0, 0, wheelR - wheelR * 0.05, 0, Math.PI * 2); ctx.stroke();
-  // 3 spokes
-  [Math.PI * 1.5, Math.PI * 0.17, Math.PI * 0.83].forEach(a => {
-    const sg = ctx.createLinearGradient(0, 0, Math.cos(a) * wheelR, Math.sin(a) * wheelR);
-    sg.addColorStop(0, '#2a2a2a'); sg.addColorStop(1, '#1a1a1a');
-    ctx.strokeStyle = sg; ctx.lineWidth = wheelR * 0.12; ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * wheelR * 0.2, Math.sin(a) * wheelR * 0.2);
-    ctx.lineTo(Math.cos(a) * (wheelR - wheelR * 0.1), Math.sin(a) * (wheelR - wheelR * 0.1));
-    ctx.stroke();
-  });
-  // Hub
-  const hubR = wheelR * 0.24;
-  const hubGrad = ctx.createRadialGradient(0, -hubR * 0.2, 1, 0, 0, hubR);
-  hubGrad.addColorStop(0, '#2a2a2a'); hubGrad.addColorStop(1, '#0a0a0a');
-  ctx.fillStyle = hubGrad;
-  ctx.beginPath(); ctx.arc(0, 0, hubR, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(0, 0, hubR, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = '#ff2200'; ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 6;
-  ctx.font = `bold ${Math.max(5, hubR * 0.5)}px monospace`; ctx.textAlign = 'center';
-  ctx.fillText('KITT', 0, hubR * 0.2);
-  ctx.shadowBlur = 0;
-  // Hub LEDs
-  ['#00ff44', '#ff4400', '#00aaff'].forEach((lc, i) => {
-    const la = (i / 3) * Math.PI * 2 - Math.PI / 2;
-    ctx.fillStyle = lc; ctx.shadowColor = lc; ctx.shadowBlur = 4;
-    ctx.beginPath(); ctx.arc(Math.cos(la) * hubR * 0.65, Math.sin(la) * hubR * 0.65, 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
-  });
-  ctx.restore();
-  ctx.restore();
-  ctx.restore();
-}
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  CAMERA SCREEN RENDERER
-// ─────────────────────────────────────────────────────────────────────────────
-function drawCameraScreen(sx, sy, sw, sh, label, renderFn) {
-  ctx.fillStyle = '#0a0a0a';
-  ctx.fillRect(sx - 2, sy - 2, sw + 4, sh + 4);
-  ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 1;
-  ctx.strokeRect(sx - 2, sy - 2, sw + 4, sh + 4);
-  ctx.save();
-  ctx.beginPath(); ctx.rect(sx, sy, sw, sh); ctx.clip();
-  renderFn(sx, sy, sw, sh);
-  ctx.restore();
-  // Scanlines
-  for (let sl = 0; sl < sh; sl += 3) {
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
-    ctx.fillRect(sx, sy + sl, sw, 1);
-  }
-  // Corner brackets
-  ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 1;
-  const bLen = 5;
-  [[sx, sy], [sx+sw, sy], [sx, sy+sh], [sx+sw, sy+sh]].forEach(([bx, by], i) => {
-    const dx = i % 2 === 0 ? 1 : -1, dy = i < 2 ? 1 : -1;
-    ctx.beginPath(); ctx.moveTo(bx, by + dy*bLen); ctx.lineTo(bx, by); ctx.lineTo(bx + dx*bLen, by); ctx.stroke();
-  });
-  ctx.fillStyle = '#00ffff'; ctx.font = 'bold 5px monospace'; ctx.textAlign = 'left';
-  ctx.fillText(label, sx + 2, sy + sh - 3);
-  const t = STATE.time;
-  const ts = `${String(Math.floor(t/3600)).padStart(2,'0')}:${String(Math.floor((t%3600)/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;
-  ctx.fillStyle = '#00ffff'; ctx.textAlign = 'right';
-  ctx.fillText(ts, sx + sw - 2, sy + sh - 3);
-}
-
-function drawRearCameraView(sx, sy, sw, sh) {
   const palette = ROAD_PALETTES[Math.min(STATE.level-1, 3)];
-  const skyG = ctx.createLinearGradient(sx, sy, sx, sy + sh * 0.45);
+  // Sky
+  const skyG = ctx.createLinearGradient(x, y, x, y + h * 0.5);
   skyG.addColorStop(0, palette.sky1); skyG.addColorStop(1, palette.sky2);
-  ctx.fillStyle = skyG; ctx.fillRect(sx, sy, sw, sh);
-  ctx.fillStyle = palette.grass1; ctx.fillRect(sx, sy + sh * 0.45, sw, sh * 0.55);
+  ctx.fillStyle = skyG; ctx.fillRect(x, y, w, h * 0.5);
+  // Ground
+  ctx.fillStyle = palette.grass1; ctx.fillRect(x, y + h * 0.5, w, h * 0.5);
+  // Road strip
   ctx.fillStyle = palette.road;
-  ctx.beginPath();
-  ctx.moveTo(sx + sw*0.3, sy + sh*0.45); ctx.lineTo(sx + sw*0.7, sy + sh*0.45);
-  ctx.lineTo(sx + sw*0.85, sy + sh); ctx.lineTo(sx + sw*0.15, sy + sh);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#FFDD00'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(sx+sw*0.5, sy+sh*0.45); ctx.lineTo(sx+sw*0.5, sy+sh); ctx.stroke();
-  // KITT rear silhouette
-  ctx.save(); ctx.translate(sx + sw*0.5, sy + sh*0.52);
-  const ks = sh * 0.018;
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.moveTo(-12*ks,0); ctx.lineTo(-11*ks,-4*ks); ctx.lineTo(-7*ks,-9*ks);
-  ctx.lineTo(7*ks,-9*ks); ctx.lineTo(11*ks,-4*ks); ctx.lineTo(12*ks,0); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#ff2200'; ctx.fillRect(-10*ks, -2*ks, 20*ks, 2*ks);
-  ctx.restore();
-  // Enemies behind
-  enemies.forEach(e => {
-    const dz = kitt.z - e.z;
-    if (dz < 0 || dz > 400) return;
-    const ps = 1 - dz/500;
-    const ex = sx + sw*0.5 + (e.x - kitt.x)*ps*0.04;
-    const ey = sy + sh*0.48 + dz*0.001*sh;
-    if (ey > sy+sh) return;
-    ctx.fillStyle = '#cc2200'; ctx.fillRect(ex-4*ps, ey-3*ps, 8*ps, 5*ps);
-    ctx.fillStyle = '#ffff88'; ctx.fillRect(ex-4*ps, ey-3*ps, 2*ps, 2*ps); ctx.fillRect(ex+2*ps, ey-3*ps, 2*ps, 2*ps);
-  });
-  ctx.fillStyle = 'rgba(0,40,0,0.22)'; ctx.fillRect(sx, sy, sw, sh);
-}
+  ctx.fillRect(x + w * 0.3, y + h * 0.45, w * 0.4, h * 0.55);
 
-function drawSideCameraView(sx, sy, sw, sh) {
-  const palette = ROAD_PALETTES[Math.min(STATE.level-1, 3)];
-  const skyG = ctx.createLinearGradient(sx, sy, sx, sy + sh*0.4);
-  skyG.addColorStop(0, palette.sky1); skyG.addColorStop(1, palette.sky2);
-  ctx.fillStyle = skyG; ctx.fillRect(sx, sy, sw, sh);
-  ctx.fillStyle = palette.grass1; ctx.fillRect(sx, sy+sh*0.4, sw, sh*0.6);
-  ctx.fillStyle = palette.road; ctx.fillRect(sx, sy+sh*0.4, sw, sh*0.25);
-  ctx.strokeStyle = '#FFDD00'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(sx, sy+sh*0.4); ctx.lineTo(sx+sw, sy+sh*0.4); ctx.stroke();
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5;
-  ctx.beginPath(); ctx.moveTo(sx, sy+sh*0.65); ctx.lineTo(sx+sw, sy+sh*0.65); ctx.stroke();
-  // KITT side profile
-  ctx.save(); ctx.translate(sx+sw*0.5, sy+sh*0.42);
-  const ks2 = sh*0.012;
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.moveTo(-30*ks2,0); ctx.lineTo(-28*ks2,-8*ks2); ctx.lineTo(-18*ks2,-18*ks2);
-  ctx.lineTo(-5*ks2,-22*ks2); ctx.lineTo(10*ks2,-22*ks2); ctx.lineTo(22*ks2,-14*ks2);
-  ctx.lineTo(30*ks2,-8*ks2); ctx.lineTo(30*ks2,0); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = 'rgba(80,160,255,0.45)';
-  ctx.beginPath();
-  ctx.moveTo(-16*ks2,-8*ks2); ctx.lineTo(-14*ks2,-18*ks2); ctx.lineTo(8*ks2,-20*ks2);
-  ctx.lineTo(18*ks2,-12*ks2); ctx.lineTo(18*ks2,-8*ks2); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#0a0a0a';
-  ctx.beginPath(); ctx.arc(-18*ks2, 0, 6*ks2, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(18*ks2, 0, 6*ks2, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#444';
-  ctx.beginPath(); ctx.arc(-18*ks2, 0, 3*ks2, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(18*ks2, 0, 3*ks2, 0, Math.PI*2); ctx.fill();
-  const scanX2 = Math.sin(STATE.time * 8) * 10*ks2;
-  ctx.fillStyle = '#ff2200'; ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 4;
-  ctx.fillRect(-28*ks2+scanX2, -5*ks2, 6*ks2, 2*ks2);
-  ctx.shadowBlur = 0;
-  ctx.restore();
-  // Scrolling scenery
-  const scroll = kitt.z * 0.001;
-  for (let t = 0; t < 4; t++) {
-    const tx = sx + ((t * 70 + scroll * 45) % (sw + 60)) - 30;
-    const ty = sy + sh * 0.35;
-    ctx.fillStyle = '#4a3a1a'; ctx.fillRect(tx-2, ty-18, 4, 18);
-    ctx.fillStyle = '#2a5a1a';
-    ctx.beginPath(); ctx.arc(tx, ty-20, 9, 0, Math.PI*2); ctx.fill();
+  if (type === 'rear') {
+    // Show enemies behind KITT
+    enemies.forEach(e => {
+      const dz = kitt.z - e.z; // behind = positive
+      if (dz < 0 || dz > 1500) return;
+      const scale = 0.3 + (1 - dz / 1500) * 0.7;
+      const ex = x + w * 0.5 + (e.x - kitt.x) * 0.015 * scale;
+      const ey = y + h * 0.5 + (1 - scale) * h * 0.3;
+      const ew = 12 * scale, eh = 8 * scale;
+      ctx.fillStyle = e.color || '#666';
+      ctx.fillRect(ex - ew/2, ey - eh/2, ew, eh);
+    });
+    // KITT's own rear
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x + w*0.38, y + h*0.62, w*0.24, h*0.18);
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(x + w*0.38, y + h*0.65, w*0.1, h*0.06);
+    ctx.fillRect(x + w*0.52, y + h*0.65, w*0.1, h*0.06);
+  } else {
+    // Side view: show road and passing scenery
+    const scroll = kitt.z * 0.001;
+    for (let t = 0; t < 3; t++) {
+      const tx = x + ((t * 60 + scroll * 40) % (w + 40)) - 20;
+      const ts = 0.4 + t * 0.2;
+      ctx.fillStyle = '#5a7a3a';
+      ctx.beginPath(); ctx.arc(tx, y + h * 0.45, 8 * ts, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3a5a1a';
+      ctx.fillRect(tx - 2, y + h * 0.45, 4, h * 0.1);
+    }
+    // KITT side silhouette
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x + w*0.3, y + h*0.55, w*0.4, h*0.12);
+    // Wheels
+    ctx.fillStyle = '#222';
+    ctx.beginPath(); ctx.arc(x + w*0.36, y + h*0.67, 5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + w*0.64, y + h*0.67, 5, 0, Math.PI*2); ctx.fill();
   }
-  ctx.fillStyle = 'rgba(0,40,0,0.22)'; ctx.fillRect(sx, sy, sw, sh);
+
+  ctx.restore();
 }
 
-// Stub out old helpers to avoid conflicts
-function drawGauge() {}
-function drawCenterConsole() {}
-function drawSteeringWheel() {}
-function drawKITTLeftPanel() {}
-function drawKITTCenterPanel() {}
-function drawKITTRightPanel() {}
-function drawKITTCameraPanel() {}
-function drawKITTGauge() {}
-function drawKITTButtonGrid() {}
-function drawKITTTopDownMini() {}
+// ─────────────────────────────────────────────────────────────────────────────
+//  LED NUMBER RENDERER (7-segment style)
+// ─────────────────────────────────────────────────────────────────────────────
+function drawLEDNumber(ctx, str, x, y, h, color) {
+  const segW = h * 0.12, digitW = h * 0.65, gap = 2;
+  let dx = x;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    // 7-segment: segments a(top) b(top-right) c(bot-right) d(bot) e(bot-left) f(top-left) g(mid)
+    const segs = {
+      '0':[1,1,1,1,1,1,0], '1':[0,1,1,0,0,0,0], '2':[1,1,0,1,1,0,1],
+      '3':[1,1,1,1,0,0,1], '4':[0,1,1,0,0,1,1], '5':[1,0,1,1,0,1,1],
+      '6':[1,0,1,1,1,1,1], '7':[1,1,1,0,0,0,0], '8':[1,1,1,1,1,1,1],
+      '9':[1,1,1,1,0,1,1], ' ':[0,0,0,0,0,0,0], '.':[0,0,0,0,0,0,0],
+    };
+    const s = segs[ch] || segs[' '];
+    const w2 = digitW - segW;
+    const mY = y + h / 2;
+    const bY = y + h - segW;
+    ctx.fillStyle = color;
+    // a - top
+    if (s[0]) ctx.fillRect(dx + segW, y, w2 - segW, segW);
+    // b - top right
+    if (s[1]) ctx.fillRect(dx + w2, y + segW, segW, mY - y - segW);
+    // c - bot right
+    if (s[2]) ctx.fillRect(dx + w2, mY, segW, bY - mY);
+    // d - bottom
+    if (s[3]) ctx.fillRect(dx + segW, bY, w2 - segW, segW);
+    // e - bot left
+    if (s[4]) ctx.fillRect(dx, mY, segW, bY - mY);
+    // f - top left
+    if (s[5]) ctx.fillRect(dx, y + segW, segW, mY - y - segW);
+    // g - middle
+    if (s[6]) ctx.fillRect(dx + segW, mY - segW/2, w2 - segW, segW);
+    dx += digitW + gap;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TIME FORMATTER
+// ─────────────────────────────────────────────────────────────────────────────
+function formatTime(t) {
+  const s = Math.floor(t % 60), m = Math.floor(t / 60) % 60, h = Math.floor(t / 3600);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  KITT DASHBOARD STARTUP SEQUENCE
+// ─────────────────────────────────────────────────────────────────────────────
+let DASH_STARTUP = null;
+
+function startDashStartup() {
+  DASH_STARTUP = { phase: 0, timer: 0, btnProgress: -1 };
+  // Play startup beeps using Web Audio
+  if (audioCtx) {
+    const beepTimes = [0, 0.15, 0.30, 0.45, 0.60, 0.75, 0.90, 1.05, 1.20, 1.35];
+    beepTimes.forEach((t, i) => {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.frequency.value = 400 + i * 120;
+      g.gain.setValueAtTime(0, audioCtx.currentTime + t);
+      g.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + t + 0.02);
+      g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + t + 0.08);
+      osc.start(audioCtx.currentTime + t);
+      osc.stop(audioCtx.currentTime + t + 0.1);
+    });
+    // Ignition roar at t=1.5
+    setTimeout(() => {
+      if (!audioCtx) return;
+      const osc2 = audioCtx.createOscillator();
+      const g2 = audioCtx.createGain();
+      const dist = audioCtx.createWaveShaper();
+      dist.curve = makeDistortionCurve(200);
+      osc2.connect(dist); dist.connect(g2); g2.connect(audioCtx.destination);
+      osc2.type = 'sawtooth';
+      osc2.frequency.setValueAtTime(80, audioCtx.currentTime);
+      osc2.frequency.linearRampToValueAtTime(200, audioCtx.currentTime + 0.8);
+      g2.gain.setValueAtTime(0, audioCtx.currentTime);
+      g2.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.1);
+      g2.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.8);
+      g2.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.2);
+      osc2.start(audioCtx.currentTime);
+      osc2.stop(audioCtx.currentTime + 1.3);
+    }, 1500);
+  }
+}
+
+function updateDashStartup(dt) {
+  if (!DASH_STARTUP) return;
+  DASH_STARTUP.timer += dt * 60;
+  // Phase 0: POWER lights up (frame 0-30)
+  if (DASH_STARTUP.timer > 30 && DASH_STARTUP.phase < 1) DASH_STARTUP.phase = 1;
+  // Phase 1: FUEL ON lights up (frame 30-60)
+  if (DASH_STARTUP.timer > 60 && DASH_STARTUP.phase < 2) DASH_STARTUP.phase = 2;
+  // Phase 2: IGNITORS lights up (frame 60-90)
+  if (DASH_STARTUP.timer > 90 && DASH_STARTUP.phase < 3) DASH_STARTUP.phase = 3;
+  // Phase 3: Button grid lights up progressively (frame 90-240)
+  if (DASH_STARTUP.timer > 90 && DASH_STARTUP.phase >= 3) {
+    DASH_STARTUP.btnProgress = Math.floor((DASH_STARTUP.timer - 90) / 150 * 48);
+  }
+  // Done at frame 270
+  if (DASH_STARTUP.timer > 270) DASH_STARTUP = null;
+}
+
+function makeDistortionCurve(amount) {
+  const samples = 256, curve = new Float32Array(samples);
+  for (let i = 0; i < samples; i++) {
+    const x = (i * 2) / samples - 1;
+    curve[i] = ((Math.PI + amount) * x) / (Math.PI + amount * Math.abs(x));
+  }
+  return curve;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TURBINE ENGINE SOUND (Web Audio oscillator, pitch follows speed)
+// ─────────────────────────────────────────────────────────────────────────────
+let turbineOsc = null, turbineGain = null, turbineOsc2 = null;
+
+function startTurbineSound() {
+  if (!audioCtx || turbineOsc) return;
+  // Primary turbine tone
+  turbineOsc = audioCtx.createOscillator();
+  turbineGain = audioCtx.createGain();
+  const dist = audioCtx.createWaveShaper();
+  dist.curve = makeDistortionCurve(50);
+  turbineOsc.type = 'sawtooth';
+  turbineOsc.frequency.value = 80;
+  turbineGain.gain.value = 0.08;
+  turbineOsc.connect(dist); dist.connect(turbineGain); turbineGain.connect(audioCtx.destination);
+  turbineOsc.start();
+  // Secondary harmonic
+  turbineOsc2 = audioCtx.createOscillator();
+  const g2 = audioCtx.createGain(); g2.gain.value = 0.04;
+  turbineOsc2.type = 'square';
+  turbineOsc2.frequency.value = 160;
+  turbineOsc2.connect(g2); g2.connect(audioCtx.destination);
+  turbineOsc2.start();
+}
+
+function updateTurbineSound() {
+  if (!turbineOsc || !audioCtx) return;
+  const speedKmh = kitt.speed;
+  const baseFreq = 60 + speedKmh * 0.8;
+  const turboBump = kitt.turboActive ? 80 : 0;
+  const targetFreq = baseFreq + turboBump;
+  turbineOsc.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.1);
+  if (turbineOsc2) turbineOsc2.frequency.setTargetAtTime(targetFreq * 2.1, audioCtx.currentTime, 0.1);
+  const vol = 0.04 + (speedKmh / 300) * 0.12 + (kitt.turboActive ? 0.06 : 0);
+  turbineGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.05);
+}
+
+function stopTurbineSound() {
+  if (turbineOsc) { try { turbineOsc.stop(); } catch(e){} turbineOsc = null; }
+  if (turbineOsc2) { try { turbineOsc2.stop(); } catch(e){} turbineOsc2 = null; }
+  turbineGain = null;
+}
+
 
 //  STREET VIEW (3rd-person follow camera)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2764,6 +2824,8 @@ function update(dt) {
   updateExplosions(dt);
   updateBoss(dt);
   updateDialogue(dt);
+  updateDashStartup(dt);
+  updateTurbineSound();
   updateSpawns(dt);
   updateLevel(dt);
 }
@@ -3304,6 +3366,7 @@ function gameOver() {
   STATE.running = false;
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   stopMusic();
+  stopTurbineSound();
   playMusic('music_main');
 
   const ov = document.getElementById('overlay');
