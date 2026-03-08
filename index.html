@@ -1542,34 +1542,120 @@ function drawKITTTopDown(cx, cy, scale = 1) {
 // ── KITT REAR VIEW (3rd-person street view) ───────────────────────────────────
 function drawKITTRear(cx, cy, scale = 1) {
   const img = KITT_SPRITES.rear;
-  if (!img || !img.complete || img.naturalWidth === 0) {
-    // Fallback: simple black rectangle while loading
-    ctx.fillStyle = '#111'; ctx.fillRect(cx - 60*scale, cy - 45*scale, 120*scale, 90*scale);
-    return;
-  }
-  // Sprite is 400x300 — draw centered at (cx, cy)
   const sw = 200 * scale;
   const sh = 150 * scale;
-  // Ground shadow
+
+  // ── Wheel dimensions (perspective: slightly wider than tall, foreshortened) ──
+  // Rear wheels sit at the very bottom of the car, slightly outside the body width
+  // In a rear 3/4 perspective the wheels appear as ellipses, NOT flat circles
+  const wheelW  = 38 * scale;   // width of wheel (ellipse x-radius * 2)
+  const wheelH  = 22 * scale;   // height of wheel (foreshortened, ~60% of width)
+  const wheelRx = wheelW / 2;
+  const wheelRy = wheelH / 2;
+  // Wheel centers: sit at road contact level (cy + sh*0.44), spread outside body
+  const wheelY  = cy + sh * 0.44;
+  const leftWX  = cx - sw * 0.36;
+  const rightWX = cx + sw * 0.36;
+
+  // ── Spinning spoke angle (tied to kitt.speed) ──
+  const spinAngle = (Date.now() * 0.012 * (typeof kitt !== 'undefined' ? Math.max(kitt.speed / 60, 0.3) : 1)) % (Math.PI * 2);
+
+  // Helper: draw one spinning wheel at (wx, wy)
+  function drawWheel(wx, wy) {
+    ctx.save();
+    // Tyre (dark rubber outer ring)
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, wheelRx, wheelRy, 0, 0, Math.PI * 2);
+    const tyreGrad = ctx.createRadialGradient(wx - wheelRx*0.2, wy - wheelRy*0.2, wheelRx*0.1, wx, wy, wheelRx);
+    tyreGrad.addColorStop(0, '#3a3a3a');
+    tyreGrad.addColorStop(0.72, '#1a1a1a');
+    tyreGrad.addColorStop(1, '#0a0a0a');
+    ctx.fillStyle = tyreGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1.5 * scale;
+    ctx.stroke();
+
+    // Rim (silver alloy wheel inside tyre)
+    const rimRx = wheelRx * 0.62;
+    const rimRy = wheelRy * 0.62;
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, rimRx, rimRy, 0, 0, Math.PI * 2);
+    const rimGrad = ctx.createRadialGradient(wx - rimRx*0.3, wy - rimRy*0.3, rimRx*0.05, wx, wy, rimRx);
+    rimGrad.addColorStop(0, '#e8e8e8');
+    rimGrad.addColorStop(0.4, '#b0b0b0');
+    rimGrad.addColorStop(1, '#606060');
+    ctx.fillStyle = rimGrad;
+    ctx.fill();
+
+    // 5 spinning spokes
+    ctx.save();
+    ctx.translate(wx, wy);
+    ctx.scale(1, wheelRy / wheelRx);  // squish to match ellipse perspective
+    for (let s = 0; s < 5; s++) {
+      const angle = spinAngle + (s / 5) * Math.PI * 2;
+      const sx = Math.cos(angle) * rimRx * 0.88;
+      const sy = Math.sin(angle) * rimRx * 0.88;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(sx, sy);
+      ctx.strokeStyle = '#cccccc';
+      ctx.lineWidth = 2.5 * scale;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Centre hub cap
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, rimRx * 0.22, rimRy * 0.22, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#aaaaaa';
+    ctx.fill();
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1 * scale;
+    ctx.stroke();
+
+    // Tyre contact shadow on road (flat ellipse below wheel)
+    ctx.globalAlpha = 0.28;
+    ctx.beginPath();
+    ctx.ellipse(wx, wy + wheelRy * 0.9, wheelRx * 0.9, wheelRy * 0.35, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+  }
+
+  // ── Draw wheels BEFORE the car body so body overlaps them slightly (realistic) ──
+  drawWheel(leftWX, wheelY);
+  drawWheel(rightWX, wheelY);
+
+  // ── Ground shadow under the whole car ──
   ctx.save();
-  ctx.globalAlpha = 0.35;
+  ctx.globalAlpha = 0.32;
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse(cx, cy + sh*0.52, sw*0.52, sh*0.12, 0, 0, Math.PI*2);
+  ctx.ellipse(cx, wheelY + wheelRy * 0.6, sw * 0.44, sh * 0.09, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  // Draw the sprite
-  ctx.drawImage(img, cx - sw/2, cy - sh/2, sw, sh);
-  // Tail light glow overlay (animated)
+
+  // ── Draw the car body sprite on top ──
+  if (img && img.complete && img.naturalWidth > 0) {
+    // Position sprite so the bottom of the car body aligns with the wheel centres
+    // (wheels peek out below and to the sides)
+    ctx.drawImage(img, cx - sw/2, cy - sh/2, sw, sh);
+  } else {
+    ctx.fillStyle = '#111';
+    ctx.fillRect(cx - sw/2, cy - sh/2, sw, sh);
+  }
+
+  // ── Tail light glow overlay (animated pulse) ──
   const glowAlpha = 0.55 + 0.25 * Math.sin(Date.now() * 0.006);
   ctx.save();
-  ctx.globalAlpha = glowAlpha * scale;
+  ctx.globalAlpha = glowAlpha;
   ctx.fillStyle = '#ff2200';
-  // Left tail light glow
   ctx.beginPath();
   ctx.ellipse(cx - sw*0.31, cy + sh*0.18, sw*0.14, sh*0.07, 0, 0, Math.PI*2);
   ctx.fill();
-  // Right tail light glow
   ctx.beginPath();
   ctx.ellipse(cx + sw*0.31, cy + sh*0.18, sw*0.14, sh*0.07, 0, 0, Math.PI*2);
   ctx.fill();
