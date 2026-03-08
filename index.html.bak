@@ -1,0 +1,3041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KITT Pursuit — Knight Rider</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+  #gameCanvas { display: block; width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; z-index: 1; }
+
+  /* ── TITLE SCREEN ── */
+  #titleScreen {
+    position: fixed; inset: 0; background: #000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  .title-logo {
+    font-size: clamp(36px, 8vw, 80px);
+    font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase;
+    background: linear-gradient(180deg, #ff2200 0%, #ff6600 40%, #ffaa00 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    text-shadow: none; filter: drop-shadow(0 0 30px #ff4400);
+    animation: titlePulse 2s ease-in-out infinite;
+  }
+  .title-sub {
+    font-size: clamp(14px, 3vw, 22px); color: #00ff88; letter-spacing: 0.4em;
+    margin-top: 12px; text-transform: uppercase;
+    animation: scannerGlow 1.5s ease-in-out infinite;
+  }
+  .title-scanner {
+    width: 320px; height: 8px; background: #111; border-radius: 4px;
+    margin: 40px 0 20px; overflow: hidden; border: 1px solid #333;
+  }
+  .scanner-bar {
+    height: 100%; width: 60px; background: linear-gradient(90deg, transparent, #ff2200, #ff6600, #ff2200, transparent);
+    border-radius: 4px; animation: scannerMove 1.2s ease-in-out infinite;
+  }
+  .title-menu { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
+  .menu-btn {
+    padding: 14px 60px; background: transparent;
+    border: 2px solid #ff3300; color: #ff3300;
+    font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer;
+    transition: all 0.2s; position: relative; overflow: hidden;
+  }
+  .menu-btn:hover, .menu-btn.active {
+    background: #ff3300; color: #000;
+    box-shadow: 0 0 20px #ff3300, 0 0 40px #ff330066;
+  }
+  .menu-btn::before {
+    content: '▶'; position: absolute; left: 16px; top: 50%;
+    transform: translateY(-50%); opacity: 0; transition: opacity 0.2s;
+  }
+  .menu-btn:hover::before { opacity: 1; }
+  .title-version { color: #333; font-size: 11px; margin-top: 40px; letter-spacing: 0.2em; }
+
+  /* ── HUD OVERLAY ── */
+  #hud {
+    position: fixed; inset: 0; pointer-events: none; z-index: 10;
+    display: none;
+  }
+
+  /* Speed display */
+  #speedDisplay {
+    position: absolute; bottom: 30px; right: 30px;
+    color: #00ff44; font-size: clamp(40px, 6vw, 72px); font-weight: 900;
+    letter-spacing: 0.05em; text-shadow: 0 0 20px #00ff44, 0 0 40px #00ff4488;
+    font-family: 'Courier New', monospace;
+  }
+  #speedLabel {
+    font-size: clamp(12px, 1.5vw, 18px); color: #00ff44; letter-spacing: 0.3em;
+    text-align: right; opacity: 0.8;
+  }
+
+  /* Health bar */
+  #healthBar {
+    position: absolute; top: 20px; left: 20px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .bar-label { color: #00ff88; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; }
+  .bar-track {
+    width: 200px; height: 14px; background: #111; border: 1px solid #333;
+    border-radius: 2px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 2px; transition: width 0.3s;
+  }
+  #healthFill { background: linear-gradient(90deg, #ff2200, #ff6600); width: 100%; }
+  #spmFill { background: linear-gradient(90deg, #00aaff, #00ffff); width: 100%; }
+  #turboFill { background: linear-gradient(90deg, #ffaa00, #ffff00); width: 100%; }
+
+  /* Scanner bar */
+  #scannerBar {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  #scannerTrack {
+    width: 280px; height: 12px; background: #111; border: 1px solid #440000;
+    border-radius: 6px; overflow: hidden; position: relative;
+  }
+  #scannerLight {
+    position: absolute; top: 0; height: 100%; width: 50px;
+    background: linear-gradient(90deg, transparent, #ff2200, #ff4400, #ff2200, transparent);
+    border-radius: 6px; animation: scannerMove 1.2s ease-in-out infinite;
+    box-shadow: 0 0 12px #ff2200;
+  }
+  #scannerLabel { color: #ff4400; font-size: 10px; letter-spacing: 0.3em; }
+
+  /* Weapon display */
+  #weaponDisplay {
+    position: absolute; top: 20px; right: 20px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+  }
+  #weaponName {
+    color: #00ff88; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase;
+  }
+  #weaponAmmo { color: #ffaa00; font-size: 20px; font-weight: 700; }
+  #weaponTimer {
+    color: #00aaff; font-size: 11px; letter-spacing: 0.15em;
+  }
+
+  /* Mini-map / radar */
+  #radar {
+    position: absolute; top: 20px; right: 20px;
+    width: 140px; height: 140px;
+  }
+  #radarCanvas { border-radius: 4px; border: 2px solid #00ff4433; }
+  #radarLabel {
+    color: #00ff44; font-size: 10px; letter-spacing: 0.3em; text-align: center;
+    margin-top: 4px;
+  }
+
+  /* Camera view toggle */
+  #viewToggle {
+    position: absolute; bottom: 30px; left: 30px;
+    display: flex; flex-direction: column; gap: 8px; pointer-events: all;
+  }
+  .view-btn {
+    padding: 8px 18px; background: rgba(0,0,0,0.7);
+    border: 1px solid #00ff4466; color: #00ff44;
+    font-family: 'Courier New', monospace; font-size: 11px;
+    letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer;
+    transition: all 0.2s; border-radius: 2px;
+  }
+  .view-btn.active {
+    background: rgba(0,255,68,0.15); border-color: #00ff44;
+    box-shadow: 0 0 10px #00ff4444;
+  }
+  .view-btn:hover { background: rgba(0,255,68,0.1); border-color: #00ff44; }
+
+  /* Score */
+  #scoreDisplay {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    margin-top: 50px; color: #ffaa00; font-size: 14px; letter-spacing: 0.3em;
+    text-align: center;
+  }
+
+  /* Power-up notification */
+  #powerupNotif {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #00ff88; font-size: clamp(18px, 3vw, 28px); font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    text-shadow: 0 0 20px #00ff88; opacity: 0;
+    transition: opacity 0.3s; pointer-events: none; text-align: center;
+  }
+
+  /* KITT voice line */
+  #voiceLine {
+    position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
+    color: #00aaff; font-size: 14px; letter-spacing: 0.15em; text-align: center;
+    opacity: 0; transition: opacity 0.4s; white-space: nowrap;
+    text-shadow: 0 0 10px #00aaff;
+  }
+
+  /* Boss health */
+  #bossHealth {
+    position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+    display: none; flex-direction: column; align-items: center; gap: 4px;
+  }
+  #bossLabel { color: #ff2200; font-size: 12px; letter-spacing: 0.3em; }
+  #bossTrack {
+    width: 300px; height: 16px; background: #111; border: 1px solid #ff220044;
+    border-radius: 2px; overflow: hidden;
+  }
+  #bossFill { height: 100%; background: linear-gradient(90deg, #ff2200, #ff6600); width: 100%; transition: width 0.3s; }
+
+  /* Cockpit overlay (view 3) */
+  #cockpitOverlay {
+    position: fixed; inset: 0; pointer-events: none; z-index: 9; display: none;
+  }
+
+  /* Game over / mission complete */
+  #overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 50;
+  }
+  #overlayTitle {
+    font-size: clamp(32px, 6vw, 64px); font-weight: 900; letter-spacing: 0.15em;
+    text-transform: uppercase; margin-bottom: 20px;
+  }
+  #overlayScore { color: #ffaa00; font-size: 20px; letter-spacing: 0.2em; margin-bottom: 30px; }
+  #overlayBtn {
+    padding: 14px 50px; background: transparent;
+    border: 2px solid #ff3300; color: #ff3300;
+    font-family: 'Courier New', monospace; font-size: 16px;
+    letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer;
+    transition: all 0.2s;
+  }
+  #overlayBtn:hover { background: #ff3300; color: #000; }
+
+  /* Controls hint */
+  #controlsHint {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    color: #333; font-size: 11px; letter-spacing: 0.15em; text-align: center;
+    pointer-events: none;
+  }
+
+  @keyframes titlePulse {
+    0%, 100% { filter: drop-shadow(0 0 20px #ff4400); }
+    50% { filter: drop-shadow(0 0 50px #ff6600) drop-shadow(0 0 80px #ff440066); }
+  }
+  @keyframes scannerGlow {
+    0%, 100% { text-shadow: 0 0 10px #00ff88; opacity: 0.9; }
+    50% { text-shadow: 0 0 20px #00ff88, 0 0 40px #00ff8866; opacity: 1; }
+  }
+  @keyframes scannerMove {
+    0% { left: -60px; }
+    100% { left: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── TITLE SCREEN ── -->
+<div id="titleScreen">
+  <div class="title-logo">KITT Pursuit</div>
+  <div class="title-sub">Knight Rider</div>
+  <div class="title-scanner"><div class="scanner-bar"></div></div>
+  <div class="title-menu">
+    <button class="menu-btn" id="btnStart">▶ Start Mission</button>
+    <button class="menu-btn" id="btnControls">Controls</button>
+  </div>
+  <div class="title-version">v1.0 · PRODUCTION BUILD · FOUNDATION INDUSTRIES</div>
+</div>
+
+<!-- ── GAME CANVAS ── -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- ── HUD ── -->
+<div id="hud">
+
+  <!-- Health / SPM / Turbo bars -->
+  <div id="healthBar">
+    <div class="bar-label">Armor</div>
+    <div class="bar-track"><div class="bar-fill" id="healthFill"></div></div>
+    <div class="bar-label" style="margin-top:6px">SPM</div>
+    <div class="bar-track"><div class="bar-fill" id="spmFill"></div></div>
+    <div class="bar-label" style="margin-top:6px">Turbo</div>
+    <div class="bar-track"><div class="bar-fill" id="turboFill"></div></div>
+  </div>
+
+  <!-- Scanner -->
+  <div id="scannerBar">
+    <div id="scannerTrack"><div id="scannerLight"></div></div>
+    <div id="scannerLabel">SCANNER ACTIVE</div>
+  </div>
+
+  <!-- Score -->
+  <div id="scoreDisplay">
+    <div id="scoreValue">SCORE: 0</div>
+    <div id="levelLabel">LEVEL 1 · HIGHWAY PURSUIT</div>
+  </div>
+
+  <!-- Weapon -->
+  <div id="weaponDisplay">
+    <div id="weaponName">NO WEAPON</div>
+    <div id="weaponAmmo"></div>
+    <div id="weaponTimer"></div>
+  </div>
+
+  <!-- Radar -->
+  <div id="radar" style="top:170px; right:20px;">
+    <canvas id="radarCanvas" width="140" height="140"></canvas>
+    <div id="radarLabel">RADAR</div>
+  </div>
+
+  <!-- Speed -->
+  <div id="speedDisplay">
+    <div id="speedValue">0</div>
+    <div id="speedLabel">MPH</div>
+  </div>
+
+  <!-- Camera view buttons -->
+  <div id="viewToggle">
+    <button class="view-btn active" id="btnTopDown" onclick="setView('topdown')">▣ Top-Down</button>
+    <button class="view-btn" id="btnStreet" onclick="setView('street')">◈ Street View</button>
+    <button class="view-btn" id="btnCockpit" onclick="setView('cockpit')">◉ Cockpit</button>
+  </div>
+
+  <!-- Power-up notification -->
+  <div id="powerupNotif"></div>
+
+  <!-- KITT voice -->
+  <div id="voiceLine"></div>
+
+  <!-- Boss health -->
+  <div id="bossHealth">
+    <div id="bossLabel">GARTH'S ARMORED TRUCK</div>
+    <div id="bossTrack"><div id="bossFill"></div></div>
+  </div>
+
+  <!-- Controls hint -->
+  <div id="controlsHint">WASD / ARROWS · SPACE = Weapon · B = Boost · M = Mode · V = View</div>
+
+</div>
+
+<!-- ── COCKPIT OVERLAY (view 3) ── -->
+<canvas id="cockpitOverlay" width="1920" height="1080" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9;display:none;"></canvas>
+
+<!-- ── GAME OVER / MISSION COMPLETE OVERLAY ── -->
+<div id="overlay">
+  <div id="overlayTitle"></div>
+  <div id="overlayScore"></div>
+  <button id="overlayBtn" onclick="restartGame()">Play Again</button>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+//  KITT PURSUIT — PRODUCTION GAME ENGINE
+//  Three camera views: Top-Down, Street (3rd person follow), Cockpit (1st person)
+// ════════════════════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const radarCanvas = document.getElementById('radarCanvas');
+const radarCtx = radarCanvas.getContext('2d');
+const cockpitCanvas = document.getElementById('cockpitOverlay');
+const cockpitCtx = cockpitCanvas.getContext('2d');
+
+// ── RESIZE ──────────────────────────────────────────────────────────────────
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  cockpitCanvas.width = window.innerWidth;
+  cockpitCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── GAME STATE ───────────────────────────────────────────────────────────────
+const STATE = {
+  running: false,
+  view: 'topdown', // 'topdown' | 'street' | 'cockpit'
+  score: 0,
+  level: 1,
+  time: 0,
+  paused: false,
+};
+
+// ── PHYSICS CONSTANTS ────────────────────────────────────────────────────────
+const PHYSICS = {
+  maxSpeed: 220,
+  reverseSpeed: 35,
+  acceleration: 18,
+  braking: 24,
+  turnLow: 1.35,
+  turnHigh: 0.82,
+  grip: 0.88,
+  driftFactor: 0.24,
+  mass: 1.15,
+  boostMult: 1.80,
+  friction: 0.97,
+  angularFriction: 0.85,
+};
+
+// ── KITT VEHICLE ─────────────────────────────────────────────────────────────
+const kitt = {
+  x: 0, y: 0,
+  vx: 0, vy: 0,
+  angle: -Math.PI / 2, // facing up
+  speed: 0,
+  angularVel: 0,
+  health: 300,
+  maxHealth: 300,
+  invincibleTimer: 0, // brief invincibility on spawn/hit
+  turboCharge: 100,
+  maxTurbo: 100,
+  spm: 0, // super pursuit mode energy
+  maxSpm: 100,
+  width: 28,
+  height: 52,
+  // weapons / abilities
+  weapon: null, // { type, ammo, timer }
+  boosting: false,
+  superPursuit: false,
+  shielded: false,
+  flightMode: false,
+  // damage state
+  sparks: 0,
+  smoke: 0,
+  // scanner
+  scannerPhase: 0,
+  // trail
+  trail: [],
+};
+
+// ── WORLD ────────────────────────────────────────────────────────────────────
+const WORLD = {
+  width: 2400,
+  height: 8000,
+  scrollY: 0,
+  scrollX: 0,
+  roadLeft: 0,
+  roadRight: 0,
+  roadWidth: 360,
+  laneCount: 4,
+  // world objects
+  roadSegments: [],
+  buildings: [],
+  trees: [],
+  props: [],
+};
+
+// ── CAMERA ───────────────────────────────────────────────────────────────────
+const CAM = {
+  x: 0, y: 0,
+  targetX: 0, targetY: 0,
+  zoom: 1,
+  shake: 0,
+  shakeX: 0, shakeY: 0,
+  angle: 0, // for street view
+  pitch: 0, // for cockpit
+  fov: 70,
+  streetDist: 220,
+  streetHeight: 80,
+};
+
+// ── ENEMIES ──────────────────────────────────────────────────────────────────
+const enemies = [];
+const bullets = [];
+const particles = [];
+const oilSlicks = [];
+const smokeScreens = [];
+const pickups = [];
+
+// ── FOUNDATION TRUCK ─────────────────────────────────────────────────────────
+const foundationTruck = {
+  active: false,
+  x: 0, y: 0,
+  width: 50, height: 120,
+  angle: -Math.PI / 2,
+  speed: 60,
+  glowColor: '#00ff88',
+  spawnTimer: 0,
+  spawnInterval: 1800, // frames
+  powerupType: null,
+  collected: false,
+};
+
+// ── BOSS ─────────────────────────────────────────────────────────────────────
+const boss = {
+  active: false,
+  x: 0, y: 0,
+  width: 80, height: 160,
+  angle: Math.PI / 2,
+  health: 300,
+  maxHealth: 300,
+  phase: 1,
+  speed: 40,
+  attackTimer: 0,
+  vx: 0, vy: 0,
+};
+
+// ── INPUT ────────────────────────────────────────────────────────────────────
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'KeyV') cycleView();
+  if (e.code === 'KeyB') activateBoost();
+  if (e.code === 'KeyM') activateSuperPursuit();
+  if (e.code === 'Space') { e.preventDefault(); fireWeapon(); }
+  if (e.code === 'KeyQ') activateOilSlick();
+  if (e.code === 'KeyE') activateSmokeScreen();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ── AUDIO SYSTEM ─────────────────────────────────────────────────────────────
+let audioCtx = null;
+let engineGain = null;
+let masterGain = null;
+let sfxGain = null;
+let engineOsc = null;
+let engineOsc2 = null;
+
+// Music track definitions
+const MUSIC_TRACKS = {
+  main:   'audio/music_main_theme.mp3',  // title screen + game start
+  level1: 'audio/music_level1.mp3',
+  level2: 'audio/music_level2.mp3',
+  level3: 'audio/music_level3.mp3',
+  level4: 'audio/music_level4.mp3',
+  boss:   'audio/music_boss.mp3',
+  menu:   'audio/music_menu.mp3',
+};
+const SFX_FILES = {
+  explosion: 'audio/sfx_explosion.wav',
+  gunfire:   'audio/sfx_gunfire.wav',
+  boost:     'audio/sfx_boost.wav',
+  hit:       'audio/sfx_hit.wav',
+};
+let sfxBuffers = {};
+let currentMusicEl = null;
+let currentMusicKey = null;
+
+function initAudio() {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.7;
+    masterGain.connect(audioCtx.destination);
+
+    sfxGain = audioCtx.createGain();
+    sfxGain.gain.value = 0.85;
+    sfxGain.connect(masterGain);
+
+    // Engine synth
+    engineGain = audioCtx.createGain();
+    engineGain.gain.value = 0;
+    engineGain.connect(masterGain);
+    engineOsc = audioCtx.createOscillator();
+    engineOsc.type = 'sawtooth';
+    engineOsc.frequency.value = 80;
+    const engineFilter = audioCtx.createBiquadFilter();
+    engineFilter.type = 'lowpass';
+    engineFilter.frequency.value = 800;
+    engineOsc.connect(engineFilter);
+    engineFilter.connect(engineGain);
+    engineOsc.start();
+    engineOsc2 = audioCtx.createOscillator();
+    engineOsc2.type = 'square';
+    engineOsc2.frequency.value = 120;
+    const engineGain2 = audioCtx.createGain();
+    engineGain2.gain.value = 0.3;
+    engineOsc2.connect(engineGain2);
+    engineGain2.connect(engineGain);
+    engineOsc2.start();
+
+    // Pre-load SFX buffers
+    Object.entries(SFX_FILES).forEach(([key, url]) => {
+      fetch(url)
+        .then(r => r.arrayBuffer())
+        .then(buf => audioCtx.decodeAudioData(buf))
+        .then(decoded => { sfxBuffers[key] = decoded; })
+        .catch(e => console.warn('SFX load failed:', key, e));
+    });
+
+    // Start main theme immediately on audio init (title screen)
+    playMusic('main');
+  } catch(e) { console.warn('Audio init failed:', e); }
+}
+
+function playMusic(trackKey) {
+  if (currentMusicKey === trackKey) return;
+  // Fade out current
+  if (currentMusicEl) {
+    const el = currentMusicEl;
+    let vol = el.volume;
+    const fade = setInterval(() => {
+      vol = Math.max(0, vol - 0.05);
+      el.volume = vol;
+      if (vol <= 0) { el.pause(); el.currentTime = 0; clearInterval(fade); }
+    }, 40);
+  }
+  const url = MUSIC_TRACKS[trackKey];
+  if (!url) return;
+  const newEl = new Audio(url);
+  newEl.loop = true;
+  newEl.volume = 0;
+  newEl.play().catch(() => {});
+  // Fade in
+  let vol = 0;
+  const fadeIn = setInterval(() => {
+    vol = Math.min(0.5, vol + 0.02);
+    newEl.volume = vol;
+    if (vol >= 0.5) clearInterval(fadeIn);
+  }, 40);
+  currentMusicEl = newEl;
+  currentMusicKey = trackKey;
+}
+
+function stopMusic() {
+  if (currentMusicEl) {
+    currentMusicEl.pause();
+    currentMusicEl.currentTime = 0;
+    currentMusicEl = null;
+  }
+  currentMusicKey = null;
+}
+
+function updateMusicForLevel() {
+  if (boss.active) {
+    playMusic('boss');
+  } else if (STATE.level >= 4) {
+    playMusic('level4');
+  } else if (STATE.level === 3) {
+    playMusic('level3');
+  } else if (STATE.level === 2) {
+    playMusic('level2');
+  } else {
+    playMusic('level1');
+  }
+}
+
+function updateEngineAudio(speed, maxSpeed) {
+  if (!audioCtx || !engineOsc) return;
+  const t = audioCtx.currentTime;
+  const ratio = Math.abs(speed) / maxSpeed;
+  const freq = 60 + ratio * 280 + (kitt.boosting ? 80 : 0) + (kitt.superPursuit ? 160 : 0);
+  engineOsc.frequency.setTargetAtTime(freq, t, 0.1);
+  engineOsc2.frequency.setTargetAtTime(freq * 1.5, t, 0.1);
+  engineGain.gain.setTargetAtTime(0.12 + ratio * 0.28, t, 0.05);
+}
+
+function playSfxBuffer(key, volume) {
+  if (!audioCtx || !sfxBuffers[key]) return;
+  const src = audioCtx.createBufferSource();
+  src.buffer = sfxBuffers[key];
+  const g = audioCtx.createGain();
+  g.gain.value = volume || 1.0;
+  src.connect(g);
+  g.connect(sfxGain);
+  src.start();
+}
+
+function playSynthSound(type) {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const g = audioCtx.createGain();
+  g.connect(sfxGain);
+  if (type === 'powerup') {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(440, t);
+    o.frequency.setValueAtTime(660, t + 0.1);
+    o.frequency.setValueAtTime(880, t + 0.2);
+    g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    o.connect(g); o.start(t); o.stop(t + 0.45);
+  } else if (type === 'superPursuit') {
+    for (let i = 0; i < 4; i++) {
+      const o = audioCtx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(100 + i * 80, t + i * 0.1);
+      o.frequency.exponentialRampToValueAtTime(400 + i * 120, t + i * 0.1 + 0.4);
+      const og = audioCtx.createGain();
+      og.gain.setValueAtTime(0.2, t + i * 0.1);
+      og.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.5);
+      o.connect(og); og.connect(sfxGain);
+      o.start(t + i * 0.1); o.stop(t + i * 0.1 + 0.5);
+    }
+  }
+}
+
+function playSound(type) {
+  switch(type) {
+    case 'explosion':    playSfxBuffer('explosion', 0.9); break;
+    case 'gunfire':      playSfxBuffer('gunfire', 0.7); break;
+    case 'boost':        playSfxBuffer('boost', 0.85); break;
+    case 'hit':          playSfxBuffer('hit', 0.8); break;
+    case 'powerup':      playSynthSound('powerup'); break;
+    case 'superPursuit': playSynthSound('superPursuit'); break;
+    default: break;
+  }
+}
+
+// ── WORLD GENERATION ─────────────────────────────────────────────────────────
+function generateWorld() {
+  WORLD.roadLeft = WORLD.width / 2 - WORLD.roadWidth / 2;
+  WORLD.roadRight = WORLD.width / 2 + WORLD.roadWidth / 2;
+
+  // Road segments with lane markings
+  WORLD.roadSegments = [];
+  for (let y = 0; y < WORLD.height; y += 80) {
+    WORLD.roadSegments.push({ y });
+  }
+
+  // Buildings on sides
+  WORLD.buildings = [];
+  for (let i = 0; i < 120; i++) {
+    const side = Math.random() < 0.5 ? 'left' : 'right';
+    const bx = side === 'left'
+      ? Math.random() * (WORLD.roadLeft - 60)
+      : WORLD.roadRight + 20 + Math.random() * (WORLD.width - WORLD.roadRight - 80);
+    const by = Math.random() * WORLD.height;
+    const bw = 40 + Math.random() * 80;
+    const bh = 50 + Math.random() * 120;
+    const hue = Math.random() < 0.3 ? '#8B7355' : (Math.random() < 0.5 ? '#5A5A5A' : '#4A4A5A');
+    WORLD.buildings.push({ x: bx, y: by, w: bw, h: bh, color: hue });
+  }
+
+  // Trees / desert props
+  WORLD.trees = [];
+  for (let i = 0; i < 200; i++) {
+    const side = Math.random() < 0.5 ? 'left' : 'right';
+    const tx = side === 'left'
+      ? Math.random() * (WORLD.roadLeft - 20)
+      : WORLD.roadRight + 10 + Math.random() * 200;
+    const ty = Math.random() * WORLD.height;
+    WORLD.trees.push({ x: tx, y: ty, r: 8 + Math.random() * 16, type: Math.random() < 0.5 ? 'cactus' : 'bush' });
+  }
+
+  // Road props (barrels, signs)
+  WORLD.props = [];
+  for (let i = 0; i < 30; i++) {
+    WORLD.props.push({
+      x: WORLD.roadLeft + 20 + Math.random() * (WORLD.roadWidth - 40),
+      y: 500 + Math.random() * (WORLD.height - 1000),
+      type: 'barrel',
+      active: true,
+    });
+  }
+}
+
+// ── ENEMY SPAWNING ────────────────────────────────────────────────────────────
+const ENEMY_TYPES = {
+  crimsonGhost: { color: '#ff2200', w: 24, h: 44, speed: 130, health: 30, score: 100, behavior: 'swarm' },
+  enforcer: { color: '#ff8800', w: 18, h: 36, speed: 160, health: 20, score: 150, behavior: 'weave' },
+  roadWarrior: { color: '#8B4513', w: 30, h: 50, speed: 90, health: 60, score: 200, behavior: 'ram' },
+  helicopter: { color: '#444466', w: 40, h: 40, speed: 110, health: 40, score: 250, behavior: 'hover' },
+  shadow: { color: '#1a1a2e', w: 28, h: 52, speed: 180, health: 80, score: 500, behavior: 'rival' },
+};
+
+let enemySpawnTimer = 0;
+let enemySpawnInterval = 300; // 5 seconds between spawns
+let maxEnemies = 4; // max 4 enemies at once for fair gameplay
+
+function spawnEnemy() {
+  if (enemies.length >= maxEnemies) return;
+  const types = Object.keys(ENEMY_TYPES);
+  const type = types[Math.floor(Math.random() * (types.length - 1))]; // exclude shadow for now
+  const def = ENEMY_TYPES[type];
+  const laneW = WORLD.roadWidth / WORLD.laneCount;
+  const lane = Math.floor(Math.random() * WORLD.laneCount);
+  const ex = WORLD.roadLeft + lane * laneW + laneW / 2;
+  const spawnOffset = canvas.height > 0 ? canvas.height * 0.7 : 600;
+  const ey = kitt.y - spawnOffset - Math.random() * 400;
+  enemies.push({
+    type, x: ex, y: ey,
+    vx: 0, vy: def.speed,
+    angle: Math.PI / 2,
+    health: def.health, maxHealth: def.health,
+    speed: def.speed + (Math.random() - 0.5) * 20,
+    width: def.w, height: def.h,
+    color: def.color,
+    behavior: def.behavior,
+    attackTimer: Math.random() * 120,
+    weaveDir: Math.random() < 0.5 ? 1 : -1,
+    weaveTimer: 0,
+    score: def.score,
+    dead: false,
+    deathTimer: 0,
+    targetLane: lane,
+  });
+}
+
+// ── POWER-UP TYPES ────────────────────────────────────────────────────────────
+const POWERUP_TYPES = [
+  { type: 'machineGun', label: 'MACHINE GUN', color: '#ff8800', ammo: 60, timer: 45 * 60 },
+  { type: 'rocket', label: 'ROCKET LAUNCHER', color: '#ff2200', ammo: 5, timer: 0 },
+  { type: 'shield', label: 'MBS SHIELD', color: '#00aaff', ammo: 0, timer: 3 * 60 * 60 },
+  { type: 'oilSlick', label: 'OIL SLICK', color: '#888800', ammo: 3, timer: 0 },
+  { type: 'smokeScreen', label: 'SMOKE SCREEN', color: '#888888', ammo: 3, timer: 0 },
+  { type: 'turboBoost', label: 'TURBO BOOST', color: '#ffff00', ammo: 2, timer: 0 },
+  { type: 'flightMode', label: 'FLIGHT MODE', color: '#00ffff', ammo: 0, timer: 5 * 60 * 60 },
+];
+
+// ── PARTICLE SYSTEM ───────────────────────────────────────────────────────────
+function spawnParticles(x, y, count, color, speed, life, type) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd = speed * (0.5 + Math.random() * 0.5);
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd,
+      life: life * (0.7 + Math.random() * 0.3),
+      maxLife: life,
+      color,
+      size: 2 + Math.random() * 4,
+      type: type || 'spark',
+      alpha: 1,
+    });
+  }
+}
+
+function spawnExplosion(x, y, scale) {
+  const s = scale || 1;
+  spawnParticles(x, y, 20 * s, '#ff6600', 8 * s, 40, 'fire');
+  spawnParticles(x, y, 15 * s, '#ff2200', 5 * s, 60, 'fire');
+  spawnParticles(x, y, 10 * s, '#ffaa00', 10 * s, 30, 'spark');
+  spawnParticles(x, y, 8 * s, '#888888', 4 * s, 80, 'smoke');
+  playSound('explosion');
+  CAM.shake = Math.max(CAM.shake, 12 * s);
+}
+
+// ── KITT PHYSICS UPDATE ───────────────────────────────────────────────────────
+function updateKITT(dt) {
+  // Invincibility timer (spawn protection)
+  if (kitt.invincibleTimer > 0) kitt.invincibleTimer = Math.max(0, kitt.invincibleTimer - dt * 60);
+  // KITT's molecular bonded shell slowly self-repairs (3 HP/sec)
+  if (kitt.health > 0 && kitt.health < kitt.maxHealth) {
+    kitt.health = Math.min(kitt.maxHealth, kitt.health + 3 * dt);
+  }
+  const maxSpd = kitt.superPursuit ? 420 : (kitt.boosting ? PHYSICS.maxSpeed * PHYSICS.boostMult : PHYSICS.maxSpeed);
+  const accel = kitt.superPursuit ? 32 : PHYSICS.acceleration;
+  const turnLow = kitt.superPursuit ? 1.20 : PHYSICS.turnLow;
+  const turnHigh = kitt.superPursuit ? 0.70 : PHYSICS.turnHigh;
+
+  // Steering
+  const speedRatio = Math.abs(kitt.speed) / maxSpd;
+  const turnRate = turnLow + (turnHigh - turnLow) * speedRatio;
+
+  if (keys['ArrowLeft'] || keys['KeyA']) {
+    kitt.angularVel -= turnRate * dt * 60;
+  }
+  if (keys['ArrowRight'] || keys['KeyD']) {
+    kitt.angularVel += turnRate * dt * 60;
+  }
+
+  // Acceleration - KITT auto-accelerates to minimum 80 mph, player can go faster
+  const minSpeed = 120; // KITT auto-cruises at 120 mph
+  if (keys['ArrowUp'] || keys['KeyW']) {
+    kitt.speed += accel * dt * 60;
+  } else if (keys['ArrowDown'] || keys['KeyS']) {
+    kitt.speed -= PHYSICS.braking * dt * 60;
+  } else {
+    kitt.speed *= Math.pow(PHYSICS.friction, dt * 60);
+    // Auto-maintain minimum speed
+    if (kitt.speed < minSpeed) kitt.speed += accel * 0.8 * dt * 60;
+  }
+
+  // Clamp speed
+  kitt.speed = Math.max(-PHYSICS.reverseSpeed, Math.min(maxSpd, kitt.speed));
+
+  // Angular friction
+  kitt.angularVel *= Math.pow(PHYSICS.angularFriction, dt * 60);
+
+  // Apply rotation
+  kitt.angle += kitt.angularVel * dt;
+
+  // Move
+  kitt.vx = Math.sin(kitt.angle) * kitt.speed;
+  kitt.vy = -Math.cos(kitt.angle) * kitt.speed;
+
+  kitt.x += kitt.vx * dt;
+  kitt.y += kitt.vy * dt;
+
+  // Road bounds
+  const hw = kitt.width / 2;
+  if (kitt.x - hw < WORLD.roadLeft) {
+    kitt.x = WORLD.roadLeft + hw;
+    kitt.vx = 0;
+    if (Math.abs(kitt.speed) > 50) {
+      kitt.health -= 2;
+      CAM.shake = Math.max(CAM.shake, 5);
+      spawnParticles(kitt.x, kitt.y, 5, '#ff6600', 3, 20, 'spark');
+    }
+    kitt.speed *= 0.7;
+  }
+  if (kitt.x + hw > WORLD.roadRight) {
+    kitt.x = WORLD.roadRight - hw;
+    kitt.vx = 0;
+    if (Math.abs(kitt.speed) > 50) {
+      kitt.health -= 2;
+      CAM.shake = Math.max(CAM.shake, 5);
+      spawnParticles(kitt.x, kitt.y, 5, '#ff6600', 3, 20, 'spark');
+    }
+    kitt.speed *= 0.7;
+  }
+
+  // World bounds (wrap vertically for endless feel)
+  if (kitt.y < -WORLD.height / 2) kitt.y = WORLD.height / 2;
+  if (kitt.y > WORLD.height / 2) kitt.y = -WORLD.height / 2;
+
+  // Turbo recharge
+  if (!kitt.boosting) {
+    kitt.turboCharge = Math.min(kitt.maxTurbo, kitt.turboCharge + 0.3 * dt * 60);
+  }
+
+  // SPM drain
+  if (kitt.superPursuit) {
+    kitt.spm -= 0.5 * dt * 60;
+    if (kitt.spm <= 0) {
+      kitt.spm = 0;
+      kitt.superPursuit = false;
+      showVoiceLine('Super Pursuit Mode deactivated.');
+    }
+  } else {
+    kitt.spm = Math.min(kitt.maxSpm, kitt.spm + 0.1 * dt * 60);
+  }
+
+  // Shield timer
+  if (kitt.shielded && kitt.weapon && kitt.weapon.type === 'shield') {
+    kitt.weapon.timer -= dt * 60;
+    if (kitt.weapon.timer <= 0) {
+      kitt.shielded = false;
+      kitt.weapon = null;
+      showVoiceLine('Shield deactivated.');
+    }
+  }
+
+  // Weapon timer
+  if (kitt.weapon && kitt.weapon.timer > 0 && kitt.weapon.type !== 'shield') {
+    kitt.weapon.timer -= dt * 60;
+    if (kitt.weapon.timer <= 0 && kitt.weapon.ammo <= 0) {
+      kitt.weapon = null;
+    }
+  }
+
+  // Scanner animation
+  kitt.scannerPhase += dt * 2;
+
+  // Trail
+  kitt.trail.push({ x: kitt.x, y: kitt.y, alpha: 1 });
+  if (kitt.trail.length > 20) kitt.trail.shift();
+  kitt.trail.forEach(t => { t.alpha -= 0.05; });
+
+  // Damage effects
+  if (kitt.health < 40) {
+    kitt.smoke = 1;
+    if (Math.random() < 0.1) spawnParticles(kitt.x, kitt.y, 2, '#888888', 1, 40, 'smoke');
+  }
+  if (kitt.health < 20) {
+    if (Math.random() < 0.05) spawnParticles(kitt.x, kitt.y, 3, '#ff4400', 2, 20, 'spark');
+  }
+
+  // Update audio
+  updateEngineAudio(kitt.speed, maxSpd);
+}
+
+// ── ENEMY AI UPDATE ───────────────────────────────────────────────────────────
+function updateEnemies(dt) {
+  const laneW = WORLD.roadWidth / WORLD.laneCount;
+
+  enemies.forEach((e, idx) => {
+    if (e.dead) {
+      e.deathTimer -= dt * 60;
+      if (e.deathTimer <= 0) enemies.splice(idx, 1);
+      return;
+    }
+
+    const dx = kitt.x - e.x;
+    const dy = kitt.y - e.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (e.behavior === 'swarm') {
+      // Crimson Ghosts: chase and flank
+      e.vy = e.speed * dt;
+      if (dist < 300) {
+        e.vx += (dx / dist) * 2 * dt * 60;
+        e.vx = Math.max(-3, Math.min(3, e.vx));
+      }
+      e.x += e.vx;
+      e.y += e.vy;
+    } else if (e.behavior === 'weave') {
+      // Enforcer Bikes: weave side to side
+      e.weaveTimer += dt * 60;
+      if (e.weaveTimer > 60) {
+        e.weaveDir *= -1;
+        e.weaveTimer = 0;
+      }
+      e.vx = e.weaveDir * 2;
+      e.vy = e.speed * dt;
+      e.x += e.vx;
+      e.y += e.vy;
+      // Drop mines occasionally
+      e.attackTimer -= dt * 60;
+      if (e.attackTimer <= 0) {
+        spawnOilSlick(e.x, e.y, '#ff8800', 'mine');
+        e.attackTimer = 180 + Math.random() * 120;
+      }
+    } else if (e.behavior === 'ram') {
+      // Road Warriors: aim directly at KITT
+      if (dist > 0) {
+        const speed = e.speed * dt;
+        e.x += (dx / dist) * speed * 0.5;
+        e.y += (dy / dist) * speed;
+        e.angle = Math.atan2(dx, -dy);
+      }
+    } else if (e.behavior === 'hover') {
+      // Helicopters: circle and drop bombs
+      e.weaveTimer += dt * 60;
+      const circleR = 320;
+      const targetX = kitt.x + Math.cos(e.weaveTimer * 0.015) * circleR;
+      const targetY = kitt.y + Math.sin(e.weaveTimer * 0.015) * circleR - 200;
+      e.x += (targetX - e.x) * 0.02;
+      e.y += (targetY - e.y) * 0.02;
+      e.attackTimer -= dt * 60;
+      if (e.attackTimer <= 0 && dist < 350) {
+        // Drop bomb
+        bullets.push({
+          x: e.x, y: e.y, vx: 0, vy: 3,
+          owner: 'enemy', type: 'bomb', damage: 20,
+          color: '#ff4400', size: 8, life: 120,
+        });
+        e.attackTimer = 120 + Math.random() * 60;
+      }
+    } else if (e.behavior === 'rival') {
+      // Shadow: smart rival
+      if (dist > 50) {
+        const speed = e.speed * dt;
+        e.x += (dx / dist) * speed * 0.3;
+        e.y += (dy / dist) * speed;
+      }
+    }
+
+    // Road bounds for enemies
+    e.x = Math.max(WORLD.roadLeft + e.width / 2, Math.min(WORLD.roadRight - e.width / 2, e.x));
+
+    // Angle toward movement
+    if (e.behavior !== 'ram') {
+      e.angle = Math.atan2(e.vx, -e.vy) || e.angle;
+    }
+
+    // Collision with KITT (helicopters only damage via bombs, not body collision)
+    if (!e.hitCooldown) e.hitCooldown = 0;
+    e.hitCooldown = Math.max(0, e.hitCooldown - dt * 60);
+    if (!kitt.shielded && kitt.invincibleTimer <= 0 && e.behavior !== 'hover' && e.hitCooldown <= 0 && dist < (kitt.width / 2 + e.width / 2) * 0.9) {
+      const dmg = e.behavior === 'ram' ? 12 : 6;
+      kitt.health -= dmg;
+      e.hitCooldown = 60; // 1 second cooldown between hits from same enemy
+      kitt.invincibleTimer = 20; // brief global invincibility after hit
+      CAM.shake = Math.max(CAM.shake, 8);
+      spawnParticles(kitt.x, kitt.y, 10, '#ff4400', 5, 30, 'spark');
+      playSound('hit');
+      // Push KITT back
+      if (dist > 0) {
+        kitt.x -= (dx / dist) * 30;
+        kitt.y -= (dy / dist) * 30;
+        kitt.speed *= 0.5;
+      }
+      if (kitt.health <= 0) gameOver();
+    }
+  });
+}
+
+// ── BULLET UPDATE ─────────────────────────────────────────────────────────────
+function updateBullets(dt) {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.x += b.vx;
+    b.y += b.vy;
+    b.life -= dt * 60;
+
+    if (b.life <= 0) { bullets.splice(i, 1); continue; }
+
+    if (b.owner === 'player') {
+      // Check enemy hits
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (e.dead) continue;
+        const dx = b.x - e.x;
+        const dy = b.y - e.y;
+        if (Math.abs(dx) < e.width / 2 + b.size && Math.abs(dy) < e.height / 2 + b.size) {
+          e.health -= b.damage;
+          spawnParticles(b.x, b.y, 6, '#ff6600', 4, 20, 'spark');
+          bullets.splice(i, 1);
+          if (e.health <= 0) {
+            e.dead = true;
+            e.deathTimer = 30;
+            spawnExplosion(e.x, e.y, 1);
+            STATE.score += e.score;
+            // Chance to drop pickup
+            if (Math.random() < 0.3) spawnPickup(e.x, e.y);
+          }
+          break;
+        }
+      }
+      // Check boss hit
+      if (boss.active && i < bullets.length) {
+        const dx = b.x - boss.x;
+        const dy = b.y - boss.y;
+        if (Math.abs(dx) < boss.width / 2 + b.size && Math.abs(dy) < boss.height / 2 + b.size) {
+          boss.health -= b.damage;
+          spawnParticles(b.x, b.y, 8, '#ff8800', 5, 25, 'spark');
+          bullets.splice(i, 1);
+          CAM.shake = Math.max(CAM.shake, 4);
+          if (boss.health <= 0) defeatBoss();
+        }
+      }
+    } else {
+      // Enemy bullet hits KITT
+      if (!kitt.shielded && kitt.invincibleTimer <= 0) {
+        const dx = b.x - kitt.x;
+        const dy = b.y - kitt.y;
+        if (Math.abs(dx) < kitt.width / 2 + b.size && Math.abs(dy) < kitt.height / 2 + b.size) {
+          kitt.health -= b.damage;
+          kitt.invincibleTimer = 30; // brief invincibility after bullet hit
+          spawnParticles(kitt.x, kitt.y, 8, '#ff4400', 4, 25, 'spark');
+          CAM.shake = Math.max(CAM.shake, 6);
+          playSound('hit');
+          bullets.splice(i, 1);
+          if (kitt.health <= 0) gameOver();
+        }
+      }
+    }
+  }
+}
+
+// ── OIL SLICK / SMOKE ─────────────────────────────────────────────────────────
+function spawnOilSlick(x, y, color, type) {
+  oilSlicks.push({ x, y, r: 30, color: color || '#333300', type: type || 'oil', life: 300 });
+}
+
+function updateOilSlicks(dt) {
+  for (let i = oilSlicks.length - 1; i >= 0; i--) {
+    const o = oilSlicks[i];
+    o.life -= dt * 60;
+    if (o.life <= 0) { oilSlicks.splice(i, 1); continue; }
+
+    // Check KITT collision
+    const dx = kitt.x - o.x;
+    const dy = kitt.y - o.y;
+    if (Math.sqrt(dx * dx + dy * dy) < o.r + kitt.width / 2) {
+      if (o.type === 'mine') {
+        if (!kitt.shielded && kitt.invincibleTimer <= 0) {
+          kitt.health -= 25;
+          spawnExplosion(o.x, o.y, 1.5);
+          CAM.shake = Math.max(CAM.shake, 15);
+          oilSlicks.splice(i, 1);
+          if (kitt.health <= 0) gameOver();
+        }
+      } else {
+        // Oil slick: spin KITT
+        kitt.angularVel += (Math.random() - 0.5) * 0.3;
+        kitt.speed *= 0.95;
+      }
+    }
+  }
+}
+
+// ── PICKUPS ───────────────────────────────────────────────────────────────────
+function spawnPickup(x, y) {
+  const pu = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+  pickups.push({ x, y, type: pu.type, label: pu.label, color: pu.color, r: 16, life: 400, pulse: 0 });
+}
+
+function updatePickups(dt) {
+  for (let i = pickups.length - 1; i >= 0; i--) {
+    const p = pickups[i];
+    p.life -= dt * 60;
+    p.pulse += dt * 4;
+    if (p.life <= 0) { pickups.splice(i, 1); continue; }
+
+    const dx = kitt.x - p.x;
+    const dy = kitt.y - p.y;
+    if (Math.sqrt(dx * dx + dy * dy) < p.r + kitt.width / 2) {
+      collectPowerup(p);
+      pickups.splice(i, 1);
+    }
+  }
+}
+
+function collectPowerup(p) {
+  const def = POWERUP_TYPES.find(t => t.type === p.type);
+  if (!def) return;
+  kitt.weapon = { type: def.type, ammo: def.ammo, timer: def.timer };
+  if (def.type === 'shield') kitt.shielded = true;
+  showPowerupNotif(def.label);
+  playSound('powerup');
+  spawnParticles(kitt.x, kitt.y, 20, def.color, 5, 40, 'spark');
+}
+
+// ── FOUNDATION TRUCK ──────────────────────────────────────────────────────────
+function updateFoundationTruck(dt) {
+  foundationTruck.spawnTimer += dt * 60;
+  if (!foundationTruck.active && foundationTruck.spawnTimer > foundationTruck.spawnInterval) {
+    spawnFoundationTruck();
+  }
+  if (!foundationTruck.active) return;
+
+  // Truck drives down the road
+  foundationTruck.y += foundationTruck.speed * dt;
+
+  // Glow pulse
+  const hue = (STATE.time * 2) % 360;
+  foundationTruck.glowColor = `hsl(${hue}, 100%, 60%)`;
+
+  // Check KITT collision (entering the truck)
+  const dx = kitt.x - foundationTruck.x;
+  const dy = kitt.y - foundationTruck.y;
+  if (Math.abs(dx) < foundationTruck.width / 2 + kitt.width / 2 &&
+      Math.abs(dy) < foundationTruck.height / 2 + kitt.height / 2) {
+    collectFoundationTruck();
+  }
+
+  // Despawn if too far
+  if (foundationTruck.y > kitt.y + canvas.height) {
+    foundationTruck.active = false;
+    foundationTruck.spawnTimer = 0;
+  }
+}
+
+function spawnFoundationTruck() {
+  const lane = Math.floor(Math.random() * WORLD.laneCount);
+  const laneW = WORLD.roadWidth / WORLD.laneCount;
+  foundationTruck.x = WORLD.roadLeft + lane * laneW + laneW / 2;
+  foundationTruck.y = kitt.y - canvas.height * 0.6;
+  foundationTruck.active = true;
+  foundationTruck.collected = false;
+  foundationTruck.powerupType = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+  foundationTruck.spawnTimer = 0;
+  showVoiceLine('Foundation truck approaching. Intercept for upgrade.');
+}
+
+function collectFoundationTruck() {
+  if (foundationTruck.collected) return;
+  foundationTruck.collected = true;
+  foundationTruck.active = false;
+  foundationTruck.spawnTimer = 0;
+  const pu = foundationTruck.powerupType;
+  kitt.weapon = { type: pu.type, ammo: pu.ammo, timer: pu.timer };
+  if (pu.type === 'shield') kitt.shielded = true;
+  showPowerupNotif('FOUNDATION UPGRADE: ' + pu.label);
+  playSound('powerup');
+  spawnParticles(kitt.x, kitt.y, 30, '#00ff88', 6, 50, 'spark');
+  CAM.shake = Math.max(CAM.shake, 8);
+  STATE.score += 500;
+}
+
+// ── WEAPON ACTIONS ────────────────────────────────────────────────────────────
+let gunFireTimer = 0;
+function fireWeapon() {
+  if (!kitt.weapon) return;
+  const w = kitt.weapon;
+
+  if (w.type === 'machineGun' && w.ammo > 0) {
+    if (gunFireTimer > 0) return;
+    gunFireTimer = 6;
+    w.ammo--;
+    const spread = (Math.random() - 0.5) * 0.1;
+    bullets.push({
+      x: kitt.x + Math.sin(kitt.angle) * kitt.height / 2,
+      y: kitt.y - Math.cos(kitt.angle) * kitt.height / 2,
+      vx: Math.sin(kitt.angle + spread) * 15,
+      vy: -Math.cos(kitt.angle + spread) * 15,
+      owner: 'player', type: 'bullet', damage: 10,
+      color: '#ffaa00', size: 4, life: 60,
+    });
+    playSound('gunfire');
+    spawnParticles(kitt.x, kitt.y - 30, 3, '#ffaa00', 3, 10, 'spark');
+    if (w.ammo <= 0) { kitt.weapon = null; showVoiceLine('Weapon depleted.'); }
+  } else if (w.type === 'rocket' && w.ammo > 0) {
+    w.ammo--;
+    bullets.push({
+      x: kitt.x + Math.sin(kitt.angle) * kitt.height / 2,
+      y: kitt.y - Math.cos(kitt.angle) * kitt.height / 2,
+      vx: Math.sin(kitt.angle) * 12,
+      vy: -Math.cos(kitt.angle) * 12,
+      owner: 'player', type: 'rocket', damage: 60,
+      color: '#ff4400', size: 8, life: 80,
+    });
+    playSound('boost');
+    if (w.ammo <= 0) { kitt.weapon = null; showVoiceLine('Rockets depleted.'); }
+  }
+}
+
+function activateOilSlick() {
+  if (!kitt.weapon || kitt.weapon.type !== 'oilSlick' || kitt.weapon.ammo <= 0) return;
+  kitt.weapon.ammo--;
+  spawnOilSlick(kitt.x, kitt.y + kitt.height / 2, '#333300', 'oil');
+  playSound('hit');
+  if (kitt.weapon.ammo <= 0) kitt.weapon = null;
+}
+
+function activateSmokeScreen() {
+  if (!kitt.weapon || kitt.weapon.type !== 'smokeScreen' || kitt.weapon.ammo <= 0) return;
+  kitt.weapon.ammo--;
+  for (let i = 0; i < 8; i++) {
+    spawnParticles(kitt.x + (Math.random() - 0.5) * 40, kitt.y + kitt.height / 2, 5, '#888888', 2, 120, 'smoke');
+  }
+  smokeScreens.push({ x: kitt.x, y: kitt.y + 40, r: 60, life: 180 });
+  playSound('hit');
+  if (kitt.weapon.ammo <= 0) kitt.weapon = null;
+}
+
+function activateBoost() {
+  if (kitt.turboCharge < 30) return;
+  kitt.boosting = true;
+  kitt.turboCharge -= 30;
+  kitt.speed = Math.min(PHYSICS.maxSpeed * PHYSICS.boostMult, kitt.speed + 80);
+  playSound('boost');
+  spawnParticles(kitt.x, kitt.y + kitt.height / 2, 15, '#ffff00', 6, 25, 'spark');
+  CAM.shake = Math.max(CAM.shake, 6);
+  setTimeout(() => { kitt.boosting = false; }, 1500);
+  showVoiceLine('Turbo Boost activated.');
+}
+
+function activateSuperPursuit() {
+  if (kitt.spm < 50) { showVoiceLine('Insufficient power for Super Pursuit Mode.'); return; }
+  kitt.superPursuit = !kitt.superPursuit;
+  if (kitt.superPursuit) {
+    playSound('superPursuit');
+    showVoiceLine('Super Pursuit Mode activated.');
+    spawnParticles(kitt.x, kitt.y, 25, '#00aaff', 8, 40, 'spark');
+    CAM.shake = Math.max(CAM.shake, 10);
+  } else {
+    showVoiceLine('Super Pursuit Mode deactivated.');
+  }
+}
+
+// ── BOSS ──────────────────────────────────────────────────────────────────────
+let bossSpawnScore = 3000;
+function checkBossSpawn() {
+  if (!boss.active && STATE.score >= bossSpawnScore) {
+    boss.active = true;
+    boss.x = WORLD.width / 2;
+    boss.y = kitt.y - canvas.height * 0.5;
+    boss.health = boss.maxHealth;
+    boss.phase = 1;
+    document.getElementById('bossHealth').style.display = 'flex';
+    showVoiceLine("Warning. Garth's armored truck detected.");
+    playSound('superPursuit');
+    playMusic('boss'); // switch to boss music
+    CAM.shake = 15;
+  }
+}
+
+function updateBoss(dt) {
+  if (!boss.active) return;
+
+  const dx = kitt.x - boss.x;
+  const dy = kitt.y - boss.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  // Phase transitions
+  if (boss.health < boss.maxHealth * 0.66 && boss.phase === 1) {
+    boss.phase = 2;
+    showVoiceLine('Target entering phase 2. Recommend evasive maneuver.');
+    spawnExplosion(boss.x, boss.y, 2);
+  }
+  if (boss.health < boss.maxHealth * 0.33 && boss.phase === 2) {
+    boss.phase = 3;
+    showVoiceLine('Target critical. Weak point exposed. Engage front grille.');
+    spawnExplosion(boss.x, boss.y, 2.5);
+    CAM.shake = 20;
+  }
+
+  // Movement
+  const speed = (30 + boss.phase * 15) * dt;
+  if (dist > 80) {
+    boss.x += (dx / dist) * speed * 0.4;
+    boss.y += (dy / dist) * speed;
+  }
+  boss.angle = Math.atan2(dx, -dy);
+
+  // Road bounds
+  boss.x = Math.max(WORLD.roadLeft + boss.width / 2, Math.min(WORLD.roadRight - boss.width / 2, boss.x));
+
+  // Attacks
+  boss.attackTimer -= dt * 60;
+  if (boss.attackTimer <= 0) {
+    if (boss.phase === 1) {
+      // Fire missiles
+      for (let i = -1; i <= 1; i++) {
+        const spread = i * 0.3;
+        bullets.push({
+          x: boss.x, y: boss.y + boss.height / 2,
+          vx: Math.sin(boss.angle + spread) * 8,
+          vy: -Math.cos(boss.angle + spread) * 8 + 5,
+          owner: 'enemy', type: 'missile', damage: 20,
+          color: '#ff2200', size: 10, life: 80,
+        });
+      }
+      boss.attackTimer = 90;
+    } else if (boss.phase === 2) {
+      // Spread attack + minions
+      for (let i = 0; i < 5; i++) {
+        const spread = (i - 2) * 0.25;
+        bullets.push({
+          x: boss.x, y: boss.y + boss.height / 2,
+          vx: Math.sin(boss.angle + spread) * 7,
+          vy: -Math.cos(boss.angle + spread) * 7 + 4,
+          owner: 'enemy', type: 'missile', damage: 15,
+          color: '#ff4400', size: 8, life: 80,
+        });
+      }
+      if (enemies.length < maxEnemies) spawnEnemy();
+      boss.attackTimer = 70;
+    } else {
+      // Desperation: rapid fire
+      for (let i = 0; i < 7; i++) {
+        const spread = (i - 3) * 0.2;
+        bullets.push({
+          x: boss.x, y: boss.y + boss.height / 2,
+          vx: Math.sin(boss.angle + spread) * 9,
+          vy: -Math.cos(boss.angle + spread) * 9 + 5,
+          owner: 'enemy', type: 'missile', damage: 12,
+          color: '#ff6600', size: 7, life: 80,
+        });
+      }
+      boss.attackTimer = 45;
+    }
+    playSound('gunfire');
+  }
+
+  // Collision with KITT
+  if (!boss.hitCooldown) boss.hitCooldown = 0;
+  boss.hitCooldown = Math.max(0, boss.hitCooldown - dt * 60);
+  if (!kitt.shielded && kitt.invincibleTimer <= 0 && boss.hitCooldown <= 0 && dist < (boss.width / 2 + kitt.width / 2)) {
+    kitt.health -= 18;
+    boss.hitCooldown = 60; // 1 second between boss body hits
+    kitt.invincibleTimer = 20;
+    CAM.shake = Math.max(CAM.shake, 10);
+    if (kitt.health <= 0) gameOver();
+  }
+
+  // Update boss health bar
+  document.getElementById('bossFill').style.width = (boss.health / boss.maxHealth * 100) + '%';
+}
+
+function defeatBoss() {
+  boss.active = false;
+  spawnExplosion(boss.x, boss.y, 4);
+  spawnExplosion(boss.x + 30, boss.y - 20, 2);
+  spawnExplosion(boss.x - 30, boss.y + 20, 2);
+  STATE.score += 2000;
+  document.getElementById('bossHealth').style.display = 'none';
+  showVoiceLine('Mission accomplished. Target neutralized.');
+  playMusic('main'); // victory — return to main theme
+  setTimeout(() => missionComplete(), 3000);
+}
+
+// ── PARTICLE UPDATE ───────────────────────────────────────────────────────────
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt * 60;
+    p.y += p.vy * dt * 60;
+    p.vx *= 0.95;
+    p.vy *= 0.95;
+    p.life -= dt * 60;
+    p.alpha = p.life / p.maxLife;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+// ── CAMERA UPDATE ─────────────────────────────────────────────────────────────
+function updateCamera(dt) {
+  // Shake decay
+  CAM.shake *= 0.88;
+  CAM.shakeX = (Math.random() - 0.5) * CAM.shake;
+  CAM.shakeY = (Math.random() - 0.5) * CAM.shake;
+
+  if (STATE.view === 'topdown') {
+    CAM.targetX = kitt.x;
+    CAM.targetY = kitt.y;
+    CAM.zoom = 1.2;
+  } else if (STATE.view === 'street') {
+    // 3rd person follow: camera behind KITT
+    const behindDist = 200;
+    CAM.targetX = kitt.x - Math.sin(kitt.angle) * behindDist;
+    CAM.targetY = kitt.y + Math.cos(kitt.angle) * behindDist;
+    CAM.angle = kitt.angle;
+    CAM.zoom = 1;
+  } else if (STATE.view === 'cockpit') {
+    // First person: camera at KITT position
+    CAM.targetX = kitt.x;
+    CAM.targetY = kitt.y;
+    CAM.angle = kitt.angle;
+    CAM.zoom = 1;
+  }
+
+  // Smooth follow
+  CAM.x += (CAM.targetX - CAM.x) * 0.12;
+  CAM.y += (CAM.targetY - CAM.y) * 0.12;
+}
+
+// ── GUN FIRE TIMER ────────────────────────────────────────────────────────────
+function updateTimers(dt) {
+  if (gunFireTimer > 0) gunFireTimer -= dt * 60;
+  STATE.time += dt;
+  // Level progression based on score
+  const prevLevel = STATE.level;
+  STATE.level = Math.min(4, 1 + Math.floor(STATE.score / 1500));
+  if (STATE.level !== prevLevel && !boss.active) {
+    updateMusicForLevel();
+    const levelNames = ['', 'HIGHWAY PURSUIT', 'DESERT STORM', 'URBAN WARFARE', 'FINAL PURSUIT'];
+    document.getElementById('levelLabel').textContent = 'LEVEL ' + STATE.level + ' \u00B7 ' + (levelNames[STATE.level] || 'PURSUIT');
+    showVoiceLine('Entering level ' + STATE.level + '. Threat level elevated.');
+  }
+  // Auto-fire machine gun
+  if (kitt.weapon && kitt.weapon.type === 'machineGun' && kitt.weapon.ammo > 0) {
+    if (keys['Space'] && gunFireTimer <= 0) fireWeapon();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  RENDERING SYSTEM
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── WORLD-TO-SCREEN TRANSFORM ─────────────────────────────────────────────────
+function worldToScreen(wx, wy) {
+  const cx = canvas.width / 2 + CAM.shakeX;
+  const cy = canvas.height / 2 + CAM.shakeY;
+  const dx = wx - CAM.x;
+  const dy = wy - CAM.y;
+  return {
+    x: cx + dx * CAM.zoom,
+    y: cy + dy * CAM.zoom,
+  };
+}
+
+// ── DRAW ROAD (TOP-DOWN) ──────────────────────────────────────────────────────
+function drawRoadTopDown() {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+
+  // Desert / sand background
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  bgGrad.addColorStop(0, '#8B7355');
+  bgGrad.addColorStop(0.5, '#A0856A');
+  bgGrad.addColorStop(1, '#8B7355');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Road surface
+  const roadL = worldToScreen(WORLD.roadLeft, kitt.y);
+  const roadR = worldToScreen(WORLD.roadRight, kitt.y);
+  const roadScreenWidth = roadR.x - roadL.x;
+
+  ctx.fillStyle = '#3A3A3A';
+  ctx.fillRect(roadL.x, 0, roadScreenWidth, canvas.height);
+
+  // Road edges (white lines)
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 3 * CAM.zoom;
+  ctx.beginPath();
+  ctx.moveTo(roadL.x, 0); ctx.lineTo(roadL.x, canvas.height);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(roadR.x, 0); ctx.lineTo(roadR.x, canvas.height);
+  ctx.stroke();
+
+  // Lane markings (dashed yellow center)
+  const laneW = roadScreenWidth / WORLD.laneCount;
+  ctx.strokeStyle = '#FFDD00';
+  ctx.lineWidth = 2 * CAM.zoom;
+  ctx.setLineDash([30 * CAM.zoom, 20 * CAM.zoom]);
+  const dashOffset = (CAM.y * CAM.zoom) % 50;
+  ctx.lineDashOffset = dashOffset;
+
+  for (let l = 1; l < WORLD.laneCount; l++) {
+    const lx = roadL.x + l * laneW;
+    ctx.beginPath();
+    ctx.moveTo(lx, 0); ctx.lineTo(lx, canvas.height);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Buildings
+  WORLD.buildings.forEach(b => {
+    const s = worldToScreen(b.x, b.y);
+    if (s.x < -200 || s.x > canvas.width + 200 || s.y < -200 || s.y > canvas.height + 200) return;
+    ctx.fillStyle = b.color;
+    ctx.fillRect(s.x, s.y, b.w * CAM.zoom, b.h * CAM.zoom);
+    // Window lights
+    ctx.fillStyle = 'rgba(255,220,100,0.4)';
+    for (let wx = 4; wx < b.w - 4; wx += 10) {
+      for (let wy = 4; wy < b.h - 4; wy += 10) {
+        if (Math.random() < 0.3) ctx.fillRect(s.x + wx * CAM.zoom, s.y + wy * CAM.zoom, 4 * CAM.zoom, 4 * CAM.zoom);
+      }
+    }
+    // Building outline
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(s.x, s.y, b.w * CAM.zoom, b.h * CAM.zoom);
+  });
+
+  // Trees / cacti
+  WORLD.trees.forEach(t => {
+    const s = worldToScreen(t.x, t.y);
+    if (s.x < -50 || s.x > canvas.width + 50 || s.y < -50 || s.y > canvas.height + 50) return;
+    if (t.type === 'cactus') {
+      ctx.fillStyle = '#2D5A27';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, t.r * CAM.zoom * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(s.x - 2 * CAM.zoom, s.y - t.r * CAM.zoom, 4 * CAM.zoom, t.r * CAM.zoom * 2);
+    } else {
+      ctx.fillStyle = '#3A6B35';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, t.r * CAM.zoom * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  // Props (barrels)
+  WORLD.props.forEach(p => {
+    if (!p.active) return;
+    const s = worldToScreen(p.x, p.y);
+    if (s.x < -30 || s.x > canvas.width + 30 || s.y < -30 || s.y > canvas.height + 30) return;
+    ctx.fillStyle = '#8B4513';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 8 * CAM.zoom, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ff6600';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+}
+
+// ── DRAW KITT (TOP-DOWN) ──────────────────────────────────────────────────────
+function drawKITTTopDown() {
+  const s = worldToScreen(kitt.x, kitt.y);
+
+  // Trail
+  kitt.trail.forEach((t, i) => {
+    const ts = worldToScreen(t.x, t.y);
+    if (t.alpha <= 0) return;
+    ctx.globalAlpha = t.alpha * 0.3;
+    ctx.fillStyle = kitt.superPursuit ? '#00aaff' : '#ff2200';
+    ctx.beginPath();
+    ctx.arc(ts.x, ts.y, 4 * CAM.zoom, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.rotate(kitt.angle);
+
+  const w = kitt.width * CAM.zoom;
+  const h = kitt.height * CAM.zoom;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(4 * CAM.zoom, 4 * CAM.zoom, w * 0.5, h * 0.35, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  const bodyGrad = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+  bodyGrad.addColorStop(0, '#1a1a1a');
+  bodyGrad.addColorStop(0.4, '#333333');
+  bodyGrad.addColorStop(0.6, '#222222');
+  bodyGrad.addColorStop(1, '#111111');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2, w, h, 4 * CAM.zoom);
+  ctx.fill();
+
+  // Roof
+  ctx.fillStyle = '#0a0a0a';
+  ctx.beginPath();
+  ctx.roundRect(-w * 0.35, -h * 0.2, w * 0.7, h * 0.4, 3 * CAM.zoom);
+  ctx.fill();
+
+  // Scanner bar (red glow)
+  const scanX = Math.sin(kitt.scannerPhase) * (w * 0.3);
+  const scanGrad = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+  scanGrad.addColorStop(0, 'transparent');
+  scanGrad.addColorStop(0.3, '#ff000044');
+  scanGrad.addColorStop(0.5, '#ff2200');
+  scanGrad.addColorStop(0.7, '#ff000044');
+  scanGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = '#ff2200';
+  ctx.shadowColor = '#ff2200';
+  ctx.shadowBlur = 10 * CAM.zoom;
+  ctx.fillRect(scanX - w * 0.15, -h / 2 + 3 * CAM.zoom, w * 0.3, 3 * CAM.zoom);
+  ctx.shadowBlur = 0;
+
+  // Headlights
+  ctx.fillStyle = '#ffffaa';
+  ctx.shadowColor = '#ffffaa';
+  ctx.shadowBlur = 8 * CAM.zoom;
+  ctx.fillRect(-w * 0.35, -h / 2 + 1 * CAM.zoom, w * 0.15, 4 * CAM.zoom);
+  ctx.fillRect(w * 0.2, -h / 2 + 1 * CAM.zoom, w * 0.15, 4 * CAM.zoom);
+  ctx.shadowBlur = 0;
+
+  // Taillights
+  ctx.fillStyle = '#ff2200';
+  ctx.fillRect(-w * 0.35, h / 2 - 5 * CAM.zoom, w * 0.15, 4 * CAM.zoom);
+  ctx.fillRect(w * 0.2, h / 2 - 5 * CAM.zoom, w * 0.15, 4 * CAM.zoom);
+
+  // Wheels
+  ctx.fillStyle = '#111';
+  const wheelPositions = [
+    [-w * 0.42, -h * 0.3], [w * 0.42 - 6 * CAM.zoom, -h * 0.3],
+    [-w * 0.42, h * 0.25], [w * 0.42 - 6 * CAM.zoom, h * 0.25],
+  ];
+  wheelPositions.forEach(([wx, wy]) => {
+    ctx.fillRect(wx, wy, 6 * CAM.zoom, 10 * CAM.zoom);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(wx, wy, 6 * CAM.zoom, 10 * CAM.zoom);
+  });
+
+  // Shield glow
+  if (kitt.shielded) {
+    ctx.strokeStyle = '#00aaff';
+    ctx.lineWidth = 3 * CAM.zoom;
+    ctx.shadowColor = '#00aaff';
+    ctx.shadowBlur = 20 * CAM.zoom;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w * 0.7, h * 0.6, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Super pursuit glow
+  if (kitt.superPursuit) {
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 2 * CAM.zoom;
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 25 * CAM.zoom;
+    ctx.beginPath();
+    ctx.roundRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, 6 * CAM.zoom);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
+
+// ── DRAW ENEMIES ──────────────────────────────────────────────────────────────
+function drawEnemiesTopDown() {
+  enemies.forEach(e => {
+    if (e.dead && e.deathTimer > 0) {
+      const s = worldToScreen(e.x, e.y);
+      ctx.globalAlpha = e.deathTimer / 30;
+      spawnParticles(e.x, e.y, 1, '#ff6600', 3, 15, 'fire');
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (e.dead) return;
+
+    const s = worldToScreen(e.x, e.y);
+    if (s.x < -80 || s.x > canvas.width + 80 || s.y < -80 || s.y > canvas.height + 80) return;
+
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(e.angle);
+
+    const w = e.width * CAM.zoom;
+    const h = e.height * CAM.zoom;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(3, 3, w * 0.5, h * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body
+    ctx.fillStyle = e.color;
+    ctx.beginPath();
+    ctx.roundRect(-w / 2, -h / 2, w, h, 3 * CAM.zoom);
+    ctx.fill();
+
+    // Roof
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.roundRect(-w * 0.3, -h * 0.2, w * 0.6, h * 0.4, 2 * CAM.zoom);
+    ctx.fill();
+
+    // Health bar
+    const hpRatio = e.health / e.maxHealth;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(-w / 2, -h / 2 - 8 * CAM.zoom, w, 4 * CAM.zoom);
+    ctx.fillStyle = hpRatio > 0.5 ? '#00ff44' : (hpRatio > 0.25 ? '#ffaa00' : '#ff2200');
+    ctx.fillRect(-w / 2, -h / 2 - 8 * CAM.zoom, w * hpRatio, 4 * CAM.zoom);
+
+    ctx.restore();
+  });
+}
+
+// ── DRAW BULLETS ──────────────────────────────────────────────────────────────
+function drawBullets() {
+  bullets.forEach(b => {
+    const s = worldToScreen(b.x, b.y);
+    ctx.fillStyle = b.color;
+    ctx.shadowColor = b.color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, b.size * CAM.zoom, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+}
+
+// ── DRAW PARTICLES ────────────────────────────────────────────────────────────
+function drawParticles() {
+  particles.forEach(p => {
+    const s = worldToScreen(p.x, p.y);
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = p.color;
+    if (p.type === 'smoke') {
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, p.size * 2 * CAM.zoom * (1 - p.alpha * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, p.size * CAM.zoom, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ── DRAW OIL SLICKS ───────────────────────────────────────────────────────────
+function drawOilSlicks() {
+  oilSlicks.forEach(o => {
+    const s = worldToScreen(o.x, o.y);
+    ctx.globalAlpha = Math.min(1, o.life / 60) * 0.7;
+    const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, o.r * CAM.zoom);
+    grad.addColorStop(0, o.type === 'mine' ? '#ff4400' : '#333300');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, o.r * CAM.zoom, 0, Math.PI * 2);
+    ctx.fill();
+    if (o.type === 'mine') {
+      ctx.strokeStyle = '#ff8800';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ── DRAW PICKUPS ──────────────────────────────────────────────────────────────
+function drawPickups() {
+  pickups.forEach(p => {
+    const s = worldToScreen(p.x, p.y);
+    const pulse = Math.sin(p.pulse) * 0.3 + 0.7;
+    ctx.globalAlpha = Math.min(1, p.life / 60) * pulse;
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, p.r * CAM.zoom, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${10 * CAM.zoom}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.fillText(p.label.substring(0, 3), s.x, s.y + 4 * CAM.zoom);
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ── DRAW FOUNDATION TRUCK ─────────────────────────────────────────────────────
+function drawFoundationTruck() {
+  if (!foundationTruck.active) return;
+  const s = worldToScreen(foundationTruck.x, foundationTruck.y);
+  if (s.x < -100 || s.x > canvas.width + 100 || s.y < -200 || s.y > canvas.height + 200) return;
+
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.rotate(foundationTruck.angle);
+
+  const w = foundationTruck.width * CAM.zoom;
+  const h = foundationTruck.height * CAM.zoom;
+
+  // Glow
+  ctx.shadowColor = foundationTruck.glowColor;
+  ctx.shadowBlur = 20 * CAM.zoom;
+
+  // Cab
+  ctx.fillStyle = '#1a1a2e';
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2, w, h * 0.35, 3 * CAM.zoom);
+  ctx.fill();
+
+  // Trailer
+  ctx.fillStyle = '#0a0a1a';
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2 + h * 0.38, w, h * 0.62, 2 * CAM.zoom);
+  ctx.fill();
+
+  // Trailer interior glow
+  const trailerGrad = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+  trailerGrad.addColorStop(0, 'transparent');
+  trailerGrad.addColorStop(0.3, foundationTruck.glowColor + '44');
+  trailerGrad.addColorStop(0.5, foundationTruck.glowColor + '88');
+  trailerGrad.addColorStop(0.7, foundationTruck.glowColor + '44');
+  trailerGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = trailerGrad;
+  ctx.fillRect(-w * 0.4, -h * 0.1, w * 0.8, h * 0.5);
+
+  // Label
+  ctx.fillStyle = foundationTruck.glowColor;
+  ctx.font = `bold ${8 * CAM.zoom}px Courier New`;
+  ctx.textAlign = 'center';
+  ctx.fillText('FOUNDATION', 0, h * 0.1);
+
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+// ── DRAW BOSS ─────────────────────────────────────────────────────────────────
+function drawBoss() {
+  if (!boss.active) return;
+  const s = worldToScreen(boss.x, boss.y);
+  if (s.x < -200 || s.x > canvas.width + 200 || s.y < -300 || s.y > canvas.height + 300) return;
+
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.rotate(boss.angle);
+
+  const w = boss.width * CAM.zoom;
+  const h = boss.height * CAM.zoom;
+
+  // Glow based on phase
+  const phaseColors = ['#ff4400', '#ff2200', '#ff0000'];
+  ctx.shadowColor = phaseColors[boss.phase - 1];
+  ctx.shadowBlur = 15 * CAM.zoom;
+
+  // Main body
+  ctx.fillStyle = '#1a0a00';
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2, w, h, 4 * CAM.zoom);
+  ctx.fill();
+
+  // Armor plating
+  ctx.fillStyle = '#2a1500';
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(-w * 0.45, -h / 2 + i * h * 0.25, w * 0.9, h * 0.22);
+  }
+
+  // Missile pods
+  ctx.fillStyle = '#333';
+  ctx.fillRect(-w * 0.5, -h * 0.3, w * 0.15, h * 0.25);
+  ctx.fillRect(w * 0.35, -h * 0.3, w * 0.15, h * 0.25);
+
+  // Grille (weak point in phase 3)
+  if (boss.phase === 3) {
+    ctx.fillStyle = '#ff0000';
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 20 * CAM.zoom;
+  } else {
+    ctx.fillStyle = '#333';
+  }
+  ctx.fillRect(-w * 0.3, -h / 2 + 2 * CAM.zoom, w * 0.6, h * 0.1);
+
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+// ── STREET VIEW RENDERER (3rd person pseudo-3D) ───────────────────────────────
+function renderStreetView() {
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Sky gradient
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.5);
+  skyGrad.addColorStop(0, '#1a0a00');
+  skyGrad.addColorStop(0.5, '#3d1a00');
+  skyGrad.addColorStop(1, '#8B4513');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H * 0.55);
+
+  // Ground gradient
+  const groundGrad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+  groundGrad.addColorStop(0, '#8B7355');
+  groundGrad.addColorStop(0.3, '#A0856A');
+  groundGrad.addColorStop(1, '#C4A882');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, H * 0.55, W, H * 0.45);
+
+  // Horizon glow
+  const horizGrad = ctx.createLinearGradient(0, H * 0.48, 0, H * 0.62);
+  horizGrad.addColorStop(0, 'transparent');
+  horizGrad.addColorStop(0.5, 'rgba(255,100,0,0.3)');
+  horizGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = horizGrad;
+  ctx.fillRect(0, H * 0.48, W, H * 0.14);
+
+  // Road perspective
+  const horizon = H * 0.52;
+  const roadBottomW = W * 0.85;
+  const roadTopW = W * 0.04;
+  const roadCenterX = W / 2;
+
+  // Road surface
+  ctx.fillStyle = '#3A3A3A';
+  ctx.beginPath();
+  ctx.moveTo(roadCenterX - roadTopW / 2, horizon);
+  ctx.lineTo(roadCenterX + roadTopW / 2, horizon);
+  ctx.lineTo(roadCenterX + roadBottomW / 2, H);
+  ctx.lineTo(roadCenterX - roadBottomW / 2, H);
+  ctx.closePath();
+  ctx.fill();
+
+  // Road edges
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(roadCenterX - roadTopW / 2, horizon);
+  ctx.lineTo(roadCenterX - roadBottomW / 2, H);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(roadCenterX + roadTopW / 2, horizon);
+  ctx.lineTo(roadCenterX + roadBottomW / 2, H);
+  ctx.stroke();
+
+  // Lane markings (perspective dashes)
+  ctx.strokeStyle = '#FFDD00';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 8; i++) {
+    const t1 = i / 8;
+    const t2 = (i + 0.4) / 8;
+    const y1 = horizon + (H - horizon) * t1;
+    const y2 = horizon + (H - horizon) * t2;
+    const hw1 = (roadTopW / 2 + (roadBottomW / 2 - roadTopW / 2) * t1);
+    const hw2 = (roadTopW / 2 + (roadBottomW / 2 - roadTopW / 2) * t2);
+
+    // Left lane
+    ctx.beginPath();
+    ctx.moveTo(roadCenterX - hw1 * 0.33, y1);
+    ctx.lineTo(roadCenterX - hw2 * 0.33, y2);
+    ctx.stroke();
+    // Right lane
+    ctx.beginPath();
+    ctx.moveTo(roadCenterX + hw1 * 0.33, y1);
+    ctx.lineTo(roadCenterX + hw2 * 0.33, y2);
+    ctx.stroke();
+  }
+
+  // Desert buildings on sides (billboards)
+  for (let i = 0; i < 5; i++) {
+    const t = (i + 0.5) / 5;
+    const y = horizon + (H - horizon) * t * 0.8;
+    const scale = t * 0.8;
+    const bh = 60 * scale;
+    const bw = 40 * scale;
+
+    // Left side
+    const lx = roadCenterX - (roadTopW / 2 + (roadBottomW / 2 - roadTopW / 2) * t) - bw * 0.5;
+    ctx.fillStyle = `rgba(90,90,90,${scale})`;
+    ctx.fillRect(lx - bw, y - bh, bw, bh);
+    ctx.strokeStyle = `rgba(50,50,50,${scale})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(lx - bw, y - bh, bw, bh);
+
+    // Right side
+    const rx = roadCenterX + (roadTopW / 2 + (roadBottomW / 2 - roadTopW / 2) * t) + bw * 0.5;
+    ctx.fillStyle = `rgba(90,90,90,${scale})`;
+    ctx.fillRect(rx, y - bh, bw, bh);
+    ctx.strokeRect(rx, y - bh, bw, bh);
+  }
+
+  // Enemies in street view (projected onto road)
+  enemies.forEach(e => {
+    if (e.dead) return;
+    const relX = e.x - kitt.x;
+    const relY = e.y - kitt.y;
+
+    // Project to camera space
+    const cosA = Math.cos(-kitt.angle);
+    const sinA = Math.sin(-kitt.angle);
+    const camX = relX * cosA - relY * sinA;
+    const camZ = relX * sinA + relY * cosA;
+
+    if (camZ > -20 && camZ < -500) {
+      const depth = -camZ;
+      const scale = 180 / depth;
+      const sx = W / 2 + camX * scale;
+      const sy = horizon + (H - horizon) * (1 - depth / 500) * 0.9;
+      const ew = e.width * scale;
+      const eh = e.height * scale;
+
+      ctx.fillStyle = e.color;
+      ctx.beginPath();
+      ctx.roundRect(sx - ew / 2, sy - eh, ew, eh, 2);
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.roundRect(sx - ew * 0.3, sy - eh * 0.7, ew * 0.6, eh * 0.4, 1);
+      ctx.fill();
+    }
+  });
+
+  // Foundation truck in street view
+  if (foundationTruck.active) {
+    const relX = foundationTruck.x - kitt.x;
+    const relY = foundationTruck.y - kitt.y;
+    const cosA = Math.cos(-kitt.angle);
+    const sinA = Math.sin(-kitt.angle);
+    const camX = relX * cosA - relY * sinA;
+    const camZ = relX * sinA + relY * cosA;
+
+    if (camZ > -20 && camZ < -600) {
+      const depth = -camZ;
+      const scale = 200 / depth;
+      const sx = W / 2 + camX * scale;
+      const sy = horizon + (H - horizon) * (1 - depth / 600) * 0.9;
+      const tw = foundationTruck.width * scale;
+      const th = foundationTruck.height * scale * 0.7;
+
+      ctx.fillStyle = '#1a1a2e';
+      ctx.beginPath();
+      ctx.roundRect(sx - tw / 2, sy - th, tw, th, 2);
+      ctx.fill();
+
+      // Glow
+      ctx.shadowColor = foundationTruck.glowColor;
+      ctx.shadowBlur = 15;
+      ctx.strokeStyle = foundationTruck.glowColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx - tw / 2, sy - th, tw, th);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // KITT car body at bottom of screen (street view)
+  drawKITTStreetBody(W, H);
+}
+
+function drawKITTStreetBody(W, H) {
+  const carY = H * 0.72;
+  const carW = W * 0.38;
+  const carH = H * 0.22;
+  const cx = W / 2;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(cx, carY + carH * 0.9, carW * 0.45, carH * 0.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  const bodyGrad = ctx.createLinearGradient(cx - carW / 2, carY, cx + carW / 2, carY + carH);
+  bodyGrad.addColorStop(0, '#2a2a2a');
+  bodyGrad.addColorStop(0.3, '#1a1a1a');
+  bodyGrad.addColorStop(0.7, '#111111');
+  bodyGrad.addColorStop(1, '#0a0a0a');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.moveTo(cx - carW / 2, carY + carH);
+  ctx.lineTo(cx - carW * 0.48, carY + carH * 0.3);
+  ctx.lineTo(cx - carW * 0.28, carY);
+  ctx.lineTo(cx + carW * 0.28, carY);
+  ctx.lineTo(cx + carW * 0.48, carY + carH * 0.3);
+  ctx.lineTo(cx + carW / 2, carY + carH);
+  ctx.closePath();
+  ctx.fill();
+
+  // Windshield
+  ctx.fillStyle = 'rgba(100,150,200,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(cx - carW * 0.25, carY + carH * 0.05);
+  ctx.lineTo(cx + carW * 0.25, carY + carH * 0.05);
+  ctx.lineTo(cx + carW * 0.22, carY + carH * 0.35);
+  ctx.lineTo(cx - carW * 0.22, carY + carH * 0.35);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Roof
+  ctx.fillStyle = '#0d0d0d';
+  ctx.beginPath();
+  ctx.moveTo(cx - carW * 0.28, carY);
+  ctx.lineTo(cx + carW * 0.28, carY);
+  ctx.lineTo(cx + carW * 0.22, carY - carH * 0.25);
+  ctx.lineTo(cx - carW * 0.22, carY - carH * 0.25);
+  ctx.closePath();
+  ctx.fill();
+
+  // Scanner bar
+  const scanX = cx + Math.sin(kitt.scannerPhase) * (carW * 0.2);
+  ctx.fillStyle = '#ff2200';
+  ctx.shadowColor = '#ff2200';
+  ctx.shadowBlur = 15;
+  ctx.fillRect(scanX - carW * 0.08, carY + carH * 0.88, carW * 0.16, 5);
+  ctx.shadowBlur = 0;
+
+  // Headlights
+  ctx.fillStyle = '#ffffaa';
+  ctx.shadowColor = '#ffffaa';
+  ctx.shadowBlur = 20;
+  ctx.beginPath();
+  ctx.ellipse(cx - carW * 0.38, carY + carH * 0.88, 12, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + carW * 0.38, carY + carH * 0.88, 12, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Boost flames
+  if (kitt.boosting || kitt.superPursuit) {
+    const flameColors = kitt.superPursuit ? ['#00ffff', '#00aaff', '#ffffff'] : ['#ff6600', '#ff4400', '#ffaa00'];
+    for (let i = 0; i < 3; i++) {
+      const fx = cx + (i - 1) * carW * 0.12;
+      const fh = (30 + Math.random() * 40) * (kitt.superPursuit ? 2 : 1);
+      const flameGrad = ctx.createLinearGradient(fx, carY + carH, fx, carY + carH + fh);
+      flameGrad.addColorStop(0, flameColors[0]);
+      flameGrad.addColorStop(0.5, flameColors[1]);
+      flameGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = flameGrad;
+      ctx.shadowColor = flameColors[0];
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      ctx.moveTo(fx - 8, carY + carH);
+      ctx.lineTo(fx + 8, carY + carH);
+      ctx.lineTo(fx, carY + carH + fh);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  // Shield bubble
+  if (kitt.shielded) {
+    ctx.strokeStyle = '#00aaff';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#00aaff';
+    ctx.shadowBlur = 25;
+    ctx.beginPath();
+    ctx.ellipse(cx, carY + carH * 0.4, carW * 0.55, carH * 0.65, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+}
+
+// ── COCKPIT VIEW RENDERER ─────────────────────────────────────────────────────
+function renderCockpitView() {
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Windshield view (same as street but from inside)
+  renderStreetViewInside(W, H);
+
+  // Draw cockpit overlay on cockpit canvas
+  cockpitCtx.clearRect(0, 0, W, H);
+  drawKITTDashboard(cockpitCtx, W, H);
+}
+
+function renderStreetViewInside(W, H) {
+  // Sky
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.45);
+  skyGrad.addColorStop(0, '#1a0a00');
+  skyGrad.addColorStop(1, '#8B4513');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H * 0.48);
+
+  // Ground
+  const groundGrad = ctx.createLinearGradient(0, H * 0.48, 0, H * 0.75);
+  groundGrad.addColorStop(0, '#8B7355');
+  groundGrad.addColorStop(1, '#A0856A');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, H * 0.48, W, H * 0.27);
+
+  const horizon = H * 0.46;
+  const roadBottomW = W * 0.7;
+  const roadTopW = W * 0.03;
+  const roadCenterX = W / 2;
+
+  // Road
+  ctx.fillStyle = '#3A3A3A';
+  ctx.beginPath();
+  ctx.moveTo(roadCenterX - roadTopW / 2, horizon);
+  ctx.lineTo(roadCenterX + roadTopW / 2, horizon);
+  ctx.lineTo(roadCenterX + roadBottomW / 2, H * 0.75);
+  ctx.lineTo(roadCenterX - roadBottomW / 2, H * 0.75);
+  ctx.closePath();
+  ctx.fill();
+
+  // Road edges
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(roadCenterX - roadTopW / 2, horizon);
+  ctx.lineTo(roadCenterX - roadBottomW / 2, H * 0.75);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(roadCenterX + roadTopW / 2, horizon);
+  ctx.lineTo(roadCenterX + roadBottomW / 2, H * 0.75);
+  ctx.stroke();
+
+  // Lane dashes
+  ctx.strokeStyle = '#FFDD00';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) {
+    const t1 = i / 6;
+    const t2 = (i + 0.4) / 6;
+    const y1 = horizon + (H * 0.75 - horizon) * t1;
+    const y2 = horizon + (H * 0.75 - horizon) * t2;
+    const hw1 = (roadTopW / 2 + (roadBottomW / 2 - roadTopW / 2) * t1);
+    const hw2 = (roadTopW / 2 + (roadBottomW / 2 - roadTopW / 2) * t2);
+    ctx.beginPath();
+    ctx.moveTo(roadCenterX - hw1 * 0.33, y1);
+    ctx.lineTo(roadCenterX - hw2 * 0.33, y2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(roadCenterX + hw1 * 0.33, y1);
+    ctx.lineTo(roadCenterX + hw2 * 0.33, y2);
+    ctx.stroke();
+  }
+
+  // Enemies in cockpit view
+  enemies.forEach(e => {
+    if (e.dead) return;
+    const relX = e.x - kitt.x;
+    const relY = e.y - kitt.y;
+    const cosA = Math.cos(-kitt.angle);
+    const sinA = Math.sin(-kitt.angle);
+    const camX = relX * cosA - relY * sinA;
+    const camZ = relX * sinA + relY * cosA;
+
+    if (camZ > -10 && camZ < -400) {
+      const depth = -camZ;
+      const scale = 150 / depth;
+      const sx = W / 2 + camX * scale;
+      const sy = horizon + (H * 0.75 - horizon) * (1 - depth / 400) * 0.95;
+      const ew = e.width * scale;
+      const eh = e.height * scale;
+
+      ctx.fillStyle = e.color;
+      ctx.beginPath();
+      ctx.roundRect(sx - ew / 2, sy - eh, ew, eh, 2);
+      ctx.fill();
+    }
+  });
+
+  // Windshield frame (A-pillars)
+  ctx.fillStyle = '#0a0a0a';
+  // Left pillar
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(W * 0.12, 0);
+  ctx.lineTo(W * 0.22, H * 0.75); ctx.lineTo(0, H * 0.75);
+  ctx.closePath(); ctx.fill();
+  // Right pillar
+  ctx.beginPath();
+  ctx.moveTo(W, 0); ctx.lineTo(W * 0.88, 0);
+  ctx.lineTo(W * 0.78, H * 0.75); ctx.lineTo(W, H * 0.75);
+  ctx.closePath(); ctx.fill();
+  // Top bar
+  ctx.fillRect(0, 0, W, H * 0.04);
+  // Windshield tint / reflection
+  ctx.fillStyle = 'rgba(100,150,200,0.06)';
+  ctx.beginPath();
+  ctx.moveTo(W * 0.12, 0); ctx.lineTo(W * 0.88, 0);
+  ctx.lineTo(W * 0.78, H * 0.75); ctx.lineTo(W * 0.22, H * 0.75);
+  ctx.closePath(); ctx.fill();
+}
+
+function drawKITTDashboard(c, W, H) {
+  const dashY = H * 0.72;
+  const dashH = H * 0.28;
+
+  // Dashboard base
+  const dashGrad = c.createLinearGradient(0, dashY, 0, H);
+  dashGrad.addColorStop(0, '#0d0d0d');
+  dashGrad.addColorStop(0.3, '#111111');
+  dashGrad.addColorStop(1, '#080808');
+  c.fillStyle = dashGrad;
+  c.fillRect(0, dashY, W, dashH);
+
+  // Dashboard top curve
+  c.fillStyle = '#0a0a0a';
+  c.beginPath();
+  c.moveTo(0, dashY);
+  c.quadraticCurveTo(W / 2, dashY - dashH * 0.15, W, dashY);
+  c.lineTo(W, dashY + 20);
+  c.quadraticCurveTo(W / 2, dashY - dashH * 0.15 + 20, 0, dashY + 20);
+  c.closePath();
+  c.fill();
+
+  // Center console scanner display
+  const cx = W / 2;
+  const scannerY = dashY + dashH * 0.1;
+  const scannerW = W * 0.18;
+  const scannerH = dashH * 0.55;
+
+  // Scanner panel background
+  c.fillStyle = '#0a0005';
+  c.beginPath();
+  c.roundRect(cx - scannerW / 2, scannerY, scannerW, scannerH, 4);
+  c.fill();
+  c.strokeStyle = '#330000';
+  c.lineWidth = 1;
+  c.strokeRect(cx - scannerW / 2, scannerY, scannerW, scannerH);
+
+  // EQ bars (scanner visualization)
+  const barCount = 5;
+  const barW = (scannerW * 0.7) / barCount;
+  const barSpacing = scannerW * 0.06;
+  for (let i = 0; i < barCount; i++) {
+    const barH = (0.3 + Math.abs(Math.sin(STATE.time * 3 + i * 1.2)) * 0.7) * scannerH * 0.75;
+    const bx = cx - scannerW * 0.35 + i * (barW + barSpacing);
+    const by = scannerY + scannerH * 0.85 - barH;
+
+    // Bar segments (red LED style)
+    const segH = barH / 8;
+    for (let s = 0; s < 8; s++) {
+      const segY = by + s * segH;
+      const ratio = s / 8;
+      c.fillStyle = ratio < 0.5 ? '#ff0000' : (ratio < 0.75 ? '#ff4400' : '#ff2200');
+      c.globalAlpha = 0.8 + Math.sin(STATE.time * 5 + s) * 0.2;
+      c.fillRect(bx, segY, barW * 0.8, segH * 0.85);
+    }
+    c.globalAlpha = 1;
+  }
+
+  // Scanner label
+  c.fillStyle = '#ff2200';
+  c.font = `bold ${Math.floor(W * 0.012)}px Courier New`;
+  c.textAlign = 'center';
+  c.shadowColor = '#ff2200';
+  c.shadowBlur = 8;
+  c.fillText('SCANNER', cx, scannerY + scannerH + 14);
+  c.shadowBlur = 0;
+
+  // Left instrument cluster
+  const leftCX = W * 0.18;
+  const instrY = dashY + dashH * 0.08;
+  const instrW = W * 0.28;
+  const instrH = dashH * 0.65;
+
+  c.fillStyle = '#080808';
+  c.beginPath();
+  c.roundRect(leftCX - instrW / 2, instrY, instrW, instrH, 4);
+  c.fill();
+  c.strokeStyle = '#222';
+  c.lineWidth = 1;
+  c.strokeRect(leftCX - instrW / 2, instrY, instrW, instrH);
+
+  // Speedometer (digital)
+  const speedStr = Math.abs(Math.round(kitt.speed)).toString().padStart(3, '0');
+  c.fillStyle = '#ff2200';
+  c.shadowColor = '#ff2200';
+  c.shadowBlur = 12;
+  c.font = `bold ${Math.floor(instrH * 0.3)}px Courier New`;
+  c.textAlign = 'center';
+  c.fillText(speedStr, leftCX, instrY + instrH * 0.4);
+  c.shadowBlur = 0;
+
+  c.fillStyle = '#ff440088';
+  c.font = `${Math.floor(instrH * 0.12)}px Courier New`;
+  c.fillText('MPH', leftCX, instrY + instrH * 0.55);
+
+  // Odometer
+  c.fillStyle = '#ff220066';
+  c.font = `${Math.floor(instrH * 0.09)}px Courier New`;
+  const odo = Math.floor(STATE.time * 0.1 * 100) / 100;
+  c.fillText(odo.toFixed(1).padStart(7, '0'), leftCX, instrY + instrH * 0.68);
+
+  // LED bars left of speedometer
+  drawLEDBars(c, leftCX - instrW * 0.42, instrY + instrH * 0.1, instrH * 0.7, kitt.health / kitt.maxHealth, '#ff2200');
+  drawLEDBars(c, leftCX + instrW * 0.38, instrY + instrH * 0.1, instrH * 0.7, kitt.turboCharge / kitt.maxTurbo, '#ffaa00');
+
+  // Right instrument cluster
+  const rightCX = W * 0.82;
+  c.fillStyle = '#080808';
+  c.beginPath();
+  c.roundRect(rightCX - instrW / 2, instrY, instrW, instrH, 4);
+  c.fill();
+  c.strokeStyle = '#222';
+  c.lineWidth = 1;
+  c.strokeRect(rightCX - instrW / 2, instrY, instrW, instrH);
+
+  // RPM / system display
+  const rpmStr = Math.floor(kitt.speed * 40 + 800).toString().padStart(5, '0');
+  c.fillStyle = '#00ff44';
+  c.shadowColor = '#00ff44';
+  c.shadowBlur = 10;
+  c.font = `bold ${Math.floor(instrH * 0.2)}px Courier New`;
+  c.textAlign = 'center';
+  c.fillText(rpmStr, rightCX, instrY + instrH * 0.35);
+  c.shadowBlur = 0;
+
+  c.fillStyle = '#00ff4488';
+  c.font = `${Math.floor(instrH * 0.1)}px Courier New`;
+  c.fillText('RPM', rightCX, instrY + instrH * 0.47);
+
+  // System status readouts
+  const statusLines = [
+    { label: 'ARMOR', val: kitt.health, max: kitt.maxHealth, color: '#ff2200' },
+    { label: 'SPM  ', val: kitt.spm, max: kitt.maxSpm, color: '#00aaff' },
+    { label: 'TURBO', val: kitt.turboCharge, max: kitt.maxTurbo, color: '#ffaa00' },
+  ];
+  statusLines.forEach((sl, i) => {
+    const sy2 = instrY + instrH * 0.55 + i * instrH * 0.14;
+    c.fillStyle = sl.color + '88';
+    c.font = `${Math.floor(instrH * 0.08)}px Courier New`;
+    c.textAlign = 'left';
+    c.fillText(sl.label, rightCX - instrW * 0.42, sy2);
+    // Bar
+    c.fillStyle = '#111';
+    c.fillRect(rightCX - instrW * 0.42, sy2 + 4, instrW * 0.84, 6);
+    c.fillStyle = sl.color;
+    c.fillRect(rightCX - instrW * 0.42, sy2 + 4, instrW * 0.84 * (sl.val / sl.max), 6);
+  });
+
+  // LED bars right side
+  drawLEDBars(c, rightCX - instrW * 0.42, instrY + instrH * 0.1, instrH * 0.7, kitt.spm / kitt.maxSpm, '#00aaff');
+  drawLEDBars(c, rightCX + instrW * 0.38, instrY + instrH * 0.1, instrH * 0.7, kitt.speed / 220, '#00ff44');
+
+  // Mode buttons (KITT console)
+  drawModeButtons(c, cx, dashY + dashH * 0.72, W, dashH);
+
+  // Steering wheel
+  drawSteeringWheel(c, cx, dashY + dashH * 0.5, W * 0.08);
+}
+
+function drawLEDBars(c, x, y, h, ratio, color) {
+  const segCount = 12;
+  const segH = h / segCount;
+  const segW = 8;
+  for (let i = 0; i < segCount; i++) {
+    const segRatio = (segCount - 1 - i) / segCount;
+    const lit = segRatio < ratio;
+    c.fillStyle = lit ? color : '#1a1a1a';
+    c.globalAlpha = lit ? (0.7 + Math.sin(STATE.time * 4 + i) * 0.3) : 0.3;
+    c.fillRect(x, y + i * segH, segW, segH * 0.8);
+  }
+  c.globalAlpha = 1;
+}
+
+function drawModeButtons(c, cx, y, W, dashH) {
+  const btnW = W * 0.06;
+  const btnH = dashH * 0.14;
+  const gap = W * 0.008;
+
+  // AIR, OIL buttons (yellow)
+  const leftBtns = [
+    { label: 'AIR', color: '#ffff00', x: cx - btnW * 3.5 - gap * 3 },
+    { label: 'OIL', color: '#ffff00', x: cx - btnW * 2.5 - gap * 2 },
+  ];
+  // S1, S2 buttons (yellow)
+  const rightBtns = [
+    { label: 'S1', color: '#ffff00', x: cx + btnW * 1.5 + gap * 2 },
+    { label: 'S2', color: '#ffff00', x: cx + btnW * 2.5 + gap * 3 },
+  ];
+  // P1-P4 (red), P3 (red)
+  const pBtns = [
+    { label: 'P1', color: '#ff2200', x: cx - btnW * 3.5 - gap * 3, y: y + btnH + gap },
+    { label: 'P2', color: '#ff2200', x: cx - btnW * 2.5 - gap * 2, y: y + btnH * 2 + gap * 2 },
+    { label: 'P3', color: '#ff2200', x: cx + btnW * 1.5 + gap * 2, y: y + btnH + gap },
+    { label: 'P4', color: '#ff2200', x: cx + btnW * 2.5 + gap * 3, y: y + btnH * 2 + gap * 2 },
+  ];
+  // Center buttons
+  const centerBtns = [
+    { label: 'AUTO\nCRUISE', color: '#8B0000', x: cx - btnW * 0.6, y: y },
+    { label: 'NORMAL\nCRUISE', color: '#111188', x: cx - btnW * 0.6, y: y + btnH + gap },
+    { label: 'PURSUIT', color: '#330088', x: cx - btnW * 0.6, y: y + btnH * 2 + gap * 2 },
+  ];
+
+  const allBtns = [
+    ...leftBtns.map(b => ({ ...b, y })),
+    ...rightBtns.map(b => ({ ...b, y })),
+    ...pBtns,
+    ...centerBtns,
+  ];
+
+  allBtns.forEach(btn => {
+    c.fillStyle = btn.color;
+    c.shadowColor = btn.color;
+    c.shadowBlur = 6;
+    c.beginPath();
+    c.roundRect(btn.x, btn.y, btnW, btnH, 3);
+    c.fill();
+    c.shadowBlur = 0;
+
+    c.fillStyle = btn.color === '#ffff00' ? '#000' : '#fff';
+    c.font = `bold ${Math.floor(btnH * 0.28)}px Courier New`;
+    c.textAlign = 'center';
+    const lines = btn.label.split('\n');
+    lines.forEach((line, li) => {
+      c.fillText(line, btn.x + btnW / 2, btn.y + btnH * (0.35 + li * 0.38));
+    });
+  });
+}
+
+function drawSteeringWheel(c, cx, cy, r) {
+  // Wheel rim
+  c.strokeStyle = '#1a1a1a';
+  c.lineWidth = r * 0.18;
+  c.shadowColor = '#333';
+  c.shadowBlur = 10;
+  c.beginPath();
+  c.arc(cx, cy, r, 0, Math.PI * 2);
+  c.stroke();
+  c.shadowBlur = 0;
+
+  // Spokes
+  c.strokeStyle = '#222';
+  c.lineWidth = r * 0.08;
+  for (let i = 0; i < 3; i++) {
+    const angle = (i / 3) * Math.PI * 2 + kitt.angle * 0.5;
+    c.beginPath();
+    c.moveTo(cx + Math.cos(angle) * r * 0.15, cy + Math.sin(angle) * r * 0.15);
+    c.lineTo(cx + Math.cos(angle) * r * 0.85, cy + Math.sin(angle) * r * 0.85);
+    c.stroke();
+  }
+
+  // Hub
+  c.fillStyle = '#111';
+  c.beginPath();
+  c.arc(cx, cy, r * 0.15, 0, Math.PI * 2);
+  c.fill();
+
+  // KITT logo on hub
+  c.fillStyle = '#ff2200';
+  c.shadowColor = '#ff2200';
+  c.shadowBlur = 8;
+  c.font = `bold ${Math.floor(r * 0.2)}px Courier New`;
+  c.textAlign = 'center';
+  c.fillText('K', cx, cy + r * 0.07);
+  c.shadowBlur = 0;
+}
+
+// ── RADAR DRAW ────────────────────────────────────────────────────────────────
+function drawRadar() {
+  const rW = radarCanvas.width;
+  const rH = radarCanvas.height;
+  const rcx = rW / 2;
+  const rcy = rH / 2;
+  const radarRange = 500;
+  const radarScale = (rW / 2 - 10) / radarRange;
+
+  radarCtx.fillStyle = 'rgba(0,20,0,0.85)';
+  radarCtx.fillRect(0, 0, rW, rH);
+
+  // Grid circles
+  radarCtx.strokeStyle = '#00ff4422';
+  radarCtx.lineWidth = 1;
+  for (let r = 1; r <= 3; r++) {
+    radarCtx.beginPath();
+    radarCtx.arc(rcx, rcy, (rW / 2 - 10) * r / 3, 0, Math.PI * 2);
+    radarCtx.stroke();
+  }
+  // Cross
+  radarCtx.beginPath();
+  radarCtx.moveTo(rcx, 5); radarCtx.lineTo(rcx, rH - 5);
+  radarCtx.moveTo(5, rcy); radarCtx.lineTo(rW - 5, rcy);
+  radarCtx.stroke();
+
+  // Sweep line
+  const sweepAngle = STATE.time * 2;
+  radarCtx.strokeStyle = '#00ff4466';
+  radarCtx.lineWidth = 2;
+  radarCtx.beginPath();
+  radarCtx.moveTo(rcx, rcy);
+  radarCtx.lineTo(rcx + Math.cos(sweepAngle) * (rW / 2 - 10), rcy + Math.sin(sweepAngle) * (rH / 2 - 10));
+  radarCtx.stroke();
+
+  // KITT (center)
+  radarCtx.fillStyle = '#00ff44';
+  radarCtx.shadowColor = '#00ff44';
+  radarCtx.shadowBlur = 8;
+  radarCtx.beginPath();
+  radarCtx.arc(rcx, rcy, 5, 0, Math.PI * 2);
+  radarCtx.fill();
+  radarCtx.shadowBlur = 0;
+
+  // Enemies
+  enemies.forEach(e => {
+    if (e.dead) return;
+    const dx = (e.x - kitt.x) * radarScale;
+    const dy = (e.y - kitt.y) * radarScale;
+    const ex = rcx + dx;
+    const ey = rcy + dy;
+    if (ex < 2 || ex > rW - 2 || ey < 2 || ey > rH - 2) return;
+    radarCtx.fillStyle = '#ff2200';
+    radarCtx.shadowColor = '#ff2200';
+    radarCtx.shadowBlur = 4;
+    radarCtx.beginPath();
+    radarCtx.arc(ex, ey, 3, 0, Math.PI * 2);
+    radarCtx.fill();
+    radarCtx.shadowBlur = 0;
+  });
+
+  // Foundation truck
+  if (foundationTruck.active) {
+    const dx = (foundationTruck.x - kitt.x) * radarScale;
+    const dy = (foundationTruck.y - kitt.y) * radarScale;
+    const tx = rcx + dx;
+    const ty = rcy + dy;
+    if (tx >= 2 && tx <= rW - 2 && ty >= 2 && ty <= rH - 2) {
+      radarCtx.fillStyle = '#00ff88';
+      radarCtx.shadowColor = '#00ff88';
+      radarCtx.shadowBlur = 6;
+      radarCtx.fillRect(tx - 4, ty - 4, 8, 8);
+      radarCtx.shadowBlur = 0;
+    }
+  }
+
+  // Boss
+  if (boss.active) {
+    const dx = (boss.x - kitt.x) * radarScale;
+    const dy = (boss.y - kitt.y) * radarScale;
+    const bx = rcx + dx;
+    const by = rcy + dy;
+    if (bx >= 2 && bx <= rW - 2 && by >= 2 && by <= rH - 2) {
+      radarCtx.fillStyle = '#ff0000';
+      radarCtx.shadowColor = '#ff0000';
+      radarCtx.shadowBlur = 10;
+      radarCtx.beginPath();
+      radarCtx.arc(bx, by, 6, 0, Math.PI * 2);
+      radarCtx.fill();
+      radarCtx.shadowBlur = 0;
+    }
+  }
+
+  // Border
+  radarCtx.strokeStyle = '#00ff4444';
+  radarCtx.lineWidth = 2;
+  radarCtx.strokeRect(0, 0, rW, rH);
+}
+
+// ── HUD UPDATE ────────────────────────────────────────────────────────────────
+function updateHUD() {
+  // Speed
+  document.getElementById('speedValue').textContent = Math.abs(Math.round(kitt.speed));
+
+  // Health bars
+  document.getElementById('healthFill').style.width = Math.max(0, kitt.health / kitt.maxHealth * 100) + '%';
+  document.getElementById('healthFill').style.background = kitt.health < 30
+    ? 'linear-gradient(90deg, #ff0000, #ff2200)'
+    : 'linear-gradient(90deg, #ff2200, #ff6600)';
+  document.getElementById('spmFill').style.width = (kitt.spm / kitt.maxSpm * 100) + '%';
+  document.getElementById('turboFill').style.width = (kitt.turboCharge / kitt.maxTurbo * 100) + '%';
+
+  // Score
+  document.getElementById('scoreValue').textContent = 'SCORE: ' + STATE.score.toLocaleString();
+
+  // Weapon
+  if (kitt.weapon) {
+    const def = POWERUP_TYPES.find(p => p.type === kitt.weapon.type);
+    document.getElementById('weaponName').textContent = def ? def.label : kitt.weapon.type.toUpperCase();
+    document.getElementById('weaponAmmo').textContent = kitt.weapon.ammo > 0 ? '×' + kitt.weapon.ammo : '';
+    document.getElementById('weaponTimer').textContent = kitt.weapon.timer > 0
+      ? Math.ceil(kitt.weapon.timer / 60) + 's'
+      : '';
+  } else {
+    document.getElementById('weaponName').textContent = 'NO WEAPON';
+    document.getElementById('weaponAmmo').textContent = '';
+    document.getElementById('weaponTimer').textContent = '';
+  }
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+let powerupTimeout = null;
+function showPowerupNotif(text) {
+  const el = document.getElementById('powerupNotif');
+  el.textContent = text;
+  el.style.opacity = '1';
+  if (powerupTimeout) clearTimeout(powerupTimeout);
+  powerupTimeout = setTimeout(() => { el.style.opacity = '0'; }, 2500);
+}
+
+let voiceTimeout = null;
+function showVoiceLine(text) {
+  const el = document.getElementById('voiceLine');
+  el.textContent = '[ KITT: ' + text + ' ]';
+  el.style.opacity = '1';
+  if (voiceTimeout) clearTimeout(voiceTimeout);
+  voiceTimeout = setTimeout(() => { el.style.opacity = '0'; }, 3500);
+}
+
+// ── VIEW SWITCHING ────────────────────────────────────────────────────────────
+function setView(view) {
+  STATE.view = view;
+  document.getElementById('btnTopDown').classList.toggle('active', view === 'topdown');
+  document.getElementById('btnStreet').classList.toggle('active', view === 'street');
+  document.getElementById('btnCockpit').classList.toggle('active', view === 'cockpit');
+  document.getElementById('cockpitOverlay').style.display = view === 'cockpit' ? 'block' : 'none';
+}
+
+function cycleView() {
+  const views = ['topdown', 'street', 'cockpit'];
+  const idx = views.indexOf(STATE.view);
+  setView(views[(idx + 1) % views.length]);
+}
+
+// ── GAME OVER / MISSION COMPLETE ──────────────────────────────────────────────
+function gameOver() {
+  STATE.running = false;
+  playMusic('main'); // return to main theme on game over
+  const el = document.getElementById('overlay');
+  el.style.display = 'flex';
+  document.getElementById('overlayTitle').textContent = 'MISSION FAILED';
+  document.getElementById('overlayTitle').style.color = '#ff2200';
+  document.getElementById('overlayScore').textContent = 'FINAL SCORE: ' + STATE.score.toLocaleString();
+  showVoiceLine('Mission failed. Structural integrity critical.');
+}
+
+function missionComplete() {
+  STATE.running = false;
+  playMusic('main'); // return to main theme on mission complete
+  const el = document.getElementById('overlay');
+  el.style.display = 'flex';
+  document.getElementById('overlayTitle').textContent = 'MISSION COMPLETE';
+  document.getElementById('overlayTitle').style.color = '#00ff88';
+  document.getElementById('overlayScore').textContent = 'SCORE: ' + STATE.score.toLocaleString();
+}
+
+function restartGame() {
+  document.getElementById('overlay').style.display = 'none';
+  startGame();
+}
+
+// ── GAME INIT ─────────────────────────────────────────────────────────────────
+function startGame() {
+  if (!audioCtx) initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+  // Reset state
+  STATE.running = true;
+  STATE.score = 0;
+  STATE.time = 0;
+  STATE.view = 'topdown';
+
+  // Reset KITT
+  kitt.x = WORLD.width / 2;
+  kitt.y = 0;
+  kitt.vx = 0; kitt.vy = 0;
+  kitt.speed = 0; kitt.angularVel = 0;
+  kitt.angle = -Math.PI / 2;
+  kitt.health = 300;
+  kitt.invincibleTimer = 180; // 3 seconds of invincibility on spawn
+  kitt.turboCharge = 100;
+  kitt.spm = 0;
+  kitt.weapon = null;
+  kitt.boosting = false;
+  kitt.superPursuit = false;
+  kitt.shielded = false;
+  kitt.trail = [];
+
+  // Reset enemies
+  enemies.length = 0;
+  bullets.length = 0;
+  particles.length = 0;
+  oilSlicks.length = 0;
+  smokeScreens.length = 0;
+  pickups.length = 0;
+
+  // Reset boss
+  boss.active = false;
+  boss.health = boss.maxHealth;
+  document.getElementById('bossHealth').style.display = 'none';
+
+  // Reset truck
+  foundationTruck.active = false;
+  foundationTruck.spawnTimer = 0;
+
+  // Camera
+  CAM.x = kitt.x; CAM.y = kitt.y;
+  CAM.zoom = 1.2;
+
+  // Show HUD
+  document.getElementById('hud').style.display = 'block';
+  document.getElementById('titleScreen').style.display = 'none';
+  setView('topdown');
+
+  showVoiceLine('KITT online. All systems nominal. Mission engaged.');
+
+  // Start level 1 music
+  playMusic('level1');
+
+  // Spawn initial enemies - start with just 1 to ease player in
+  spawnEnemy();
+  bossSpawnScore = 3000;
+}
+
+// ── MAIN GAME LOOP ────────────────────────────────────────────────────────────
+let lastTime = 0;
+function gameLoop(timestamp) {
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+  lastTime = timestamp;
+
+  if (!STATE.running) {
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  // Update
+  updateKITT(dt);
+  updateEnemies(dt);
+  updateBullets(dt);
+  updateOilSlicks(dt);
+  updatePickups(dt);
+  updateFoundationTruck(dt);
+  updateParticles(dt);
+  updateCamera(dt);
+  updateTimers(dt);
+  checkBossSpawn();
+  updateBoss(dt);
+
+  // Enemy spawning
+  enemySpawnTimer += dt * 60;
+  if (enemySpawnTimer > enemySpawnInterval) {
+    spawnEnemy();
+    enemySpawnTimer = 0;
+    enemySpawnInterval = Math.max(60, enemySpawnInterval - 1);
+  }
+
+  // ── RENDER ──
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (STATE.view === 'topdown') {
+    drawRoadTopDown();
+    drawOilSlicks();
+    drawPickups();
+    drawFoundationTruck();
+    drawBoss();
+    drawEnemiesTopDown();
+    drawBullets();
+    drawParticles();
+    drawKITTTopDown();
+    // Speed lines when boosting
+    if (kitt.boosting || kitt.superPursuit) {
+      drawSpeedLines();
+    }
+  } else if (STATE.view === 'street') {
+    renderStreetView();
+    drawBullets();
+    drawParticles();
+    if (kitt.boosting || kitt.superPursuit) drawSpeedLines();
+  } else if (STATE.view === 'cockpit') {
+    renderCockpitView();
+    drawBullets();
+    drawParticles();
+  }
+
+  // Vignette
+  drawVignette();
+
+  // HUD
+  updateHUD();
+  drawRadar();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ── SPEED LINES ───────────────────────────────────────────────────────────────
+function drawSpeedLines() {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const count = 20;
+  const color = kitt.superPursuit ? '#00aaff' : '#ffffff';
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = 0.15 + Math.random() * 0.1;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r1 = canvas.width * 0.3 + Math.random() * canvas.width * 0.2;
+    const r2 = r1 + 40 + Math.random() * 80;
+    ctx.lineWidth = 1 + Math.random() * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * r1, cy + Math.sin(angle) * r1);
+    ctx.lineTo(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ── VIGNETTE ──────────────────────────────────────────────────────────────────
+function drawVignette() {
+  const W = canvas.width, H = canvas.height;
+  const grad = ctx.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, H * 0.8);
+  grad.addColorStop(0, 'transparent');
+  grad.addColorStop(1, 'rgba(0,0,0,0.6)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Low health red vignette
+  if (kitt.health < 30) {
+    const alpha = (1 - kitt.health / 30) * 0.4 * (0.7 + Math.sin(STATE.time * 8) * 0.3);
+    const redGrad = ctx.createRadialGradient(W / 2, H / 2, H * 0.1, W / 2, H / 2, H * 0.7);
+    redGrad.addColorStop(0, 'transparent');
+    redGrad.addColorStop(1, `rgba(255,0,0,${alpha})`);
+    ctx.fillStyle = redGrad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Super pursuit blue tint
+  if (kitt.superPursuit) {
+    ctx.fillStyle = 'rgba(0,100,255,0.08)';
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// ── TITLE SCREEN BUTTONS ──────────────────────────────────────────────────────
+// Start main theme on first user interaction (browser autoplay policy)
+let _audioStarted = false;
+function _startAudioOnce() {
+  if (_audioStarted) return;
+  _audioStarted = true;
+  if (!audioCtx) initAudio();
+  else if (audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => playMusic('main'));
+  } else {
+    playMusic('main');
+  }
+}
+document.getElementById('titleScreen').addEventListener('click', _startAudioOnce, { once: false });
+document.getElementById('btnStart').addEventListener('click', () => {
+  _startAudioOnce();
+  startGame();
+});
+// Also handle via onclick for redundancy
+document.getElementById('btnStart').onclick = function() {
+  _startAudioOnce();
+  startGame();
+};
+
+document.getElementById('btnControls').addEventListener('click', () => {
+  alert(
+    'KITT PURSUIT — CONTROLS\n\n' +
+    'W / ↑ ........... Accelerate\n' +
+    'S / ↓ ........... Brake / Reverse\n' +
+    'A / ← ........... Steer Left\n' +
+    'D / → ........... Steer Right\n' +
+    'SPACE ........... Fire Weapon\n' +
+    'B ............... Turbo Boost\n' +
+    'M ............... Super Pursuit Mode\n' +
+    'Q ............... Deploy Oil Slick\n' +
+    'E ............... Deploy Smoke Screen\n' +
+    'V ............... Cycle Camera View\n\n' +
+    'Drive into the FOUNDATION TRUCK for upgrades!\n' +
+    'Collect glowing orbs dropped by enemies.'
+  );
+});
+
+// ── WORLD INIT ────────────────────────────────────────────────────────────────
+generateWorld();
+
+// ── START LOOP ────────────────────────────────────────────────────────────────
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
