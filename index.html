@@ -92,6 +92,7 @@ html, body { width:100%; height:100%; background:#000; overflow:hidden; font-fam
   <button class="vbtn"        id="btnStreet"   onclick="setView('street')">&#9670; Street View</button>
   <button class="vbtn"        id="btnCockpit"  onclick="setView('cockpit')">&#9673; Cockpit</button>
   <button class="vbtn"        id="btnFront"    onclick="setView('front')">&#9650; Front View</button>
+  <button class="vbtn" style="border-color:#ff4400;color:#ff4400;margin-left:12px" onclick="exitToMenu()">&#9632; EXIT</button>
 </div>
 <div id="titleScreen">
   <h1>KITT PURSUIT</h1>
@@ -981,249 +982,575 @@ function drawSceneryObject(type, sx, sy, scale, side) {
 
 // ── KITT TOP-DOWN (detailed Trans Am silhouette) ──────────────────────────────
 function drawKITTTopDown(cx, cy, scale=1) {
+  // Proper overhead top-down view of KITT (1982 Pontiac Trans Am)
+  // Car faces UP (negative Y = front of car), travels upward on screen
   ctx.save();
   ctx.translate(cx, cy);
   ctx.scale(scale, scale);
 
-  const w = 22, h = 48;
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.beginPath(); ctx.ellipse(3, 4, w*0.9, h*0.45, 0, 0, Math.PI*2); ctx.fill();
+  // Dimensions: w=half-width, h=half-length
+  const w = 34;  // half-width
+  const h = 72;  // half-length (front is -h, rear is +h)
 
-  // Body — glossy black Trans Am
-  const bodyGrad = ctx.createLinearGradient(-w, 0, w, 0);
-  bodyGrad.addColorStop(0, '#111');
-  bodyGrad.addColorStop(0.3, '#2a2a2a');
-  bodyGrad.addColorStop(0.5, '#3a3a3a');
-  bodyGrad.addColorStop(0.7, '#2a2a2a');
-  bodyGrad.addColorStop(1, '#111');
-  ctx.fillStyle = bodyGrad;
+  // ── GROUND SHADOW ──
+  ctx.save();
+  ctx.translate(6, 8);
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.beginPath();
-  ctx.moveTo(-w*0.55, h*0.5);   // rear left
-  ctx.lineTo(-w*0.6,  h*0.2);   // mid left
-  ctx.lineTo(-w*0.55, -h*0.1);  // front-mid left
-  ctx.lineTo(-w*0.4,  -h*0.45); // front left
-  ctx.lineTo( w*0.4,  -h*0.45); // front right
-  ctx.lineTo( w*0.55, -h*0.1);  // front-mid right
-  ctx.lineTo( w*0.6,   h*0.2);  // mid right
-  ctx.lineTo( w*0.55,  h*0.5);  // rear right
-  ctx.closePath(); ctx.fill();
+  ctx.ellipse(0, 0, w * 0.95, h * 0.52, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 
-  // Roof (lighter)
-  ctx.fillStyle = '#222';
-  ctx.beginPath();
-  ctx.moveTo(-w*0.35, h*0.15);
-  ctx.lineTo(-w*0.38, -h*0.08);
-  ctx.lineTo( w*0.38, -h*0.08);
-  ctx.lineTo( w*0.35,  h*0.15);
-  ctx.closePath(); ctx.fill();
-
-  // Windshield
-  ctx.fillStyle = 'rgba(100,180,255,0.5)';
-  ctx.beginPath();
-  ctx.moveTo(-w*0.32, -h*0.08);
-  ctx.lineTo(-w*0.28, -h*0.28);
-  ctx.lineTo( w*0.28, -h*0.28);
-  ctx.lineTo( w*0.32, -h*0.08);
-  ctx.closePath(); ctx.fill();
-
-  // Rear window
-  ctx.fillStyle = 'rgba(80,140,200,0.4)';
-  ctx.beginPath();
-  ctx.moveTo(-w*0.3, h*0.15);
-  ctx.lineTo(-w*0.25, h*0.0);
-  ctx.lineTo( w*0.25, h*0.0);
-  ctx.lineTo( w*0.3,  h*0.15);
-  ctx.closePath(); ctx.fill();
-
-  // Headlights
-  ctx.fillStyle = '#ffffaa';
-  ctx.fillRect(-w*0.38, -h*0.47, w*0.18, 5);
-  ctx.fillRect( w*0.2,  -h*0.47, w*0.18, 5);
-
-  // Tail lights
-  ctx.fillStyle = '#ff2200';
-  ctx.fillRect(-w*0.5, h*0.44, w*0.2, 5);
-  ctx.fillRect( w*0.3, h*0.44, w*0.2, 5);
-
-  // KNIGHT license plate
-  ctx.fillStyle = '#cccccc';
-  ctx.fillRect(-w*0.2, h*0.42, w*0.4, 8);
-  ctx.fillStyle = '#000';
-  ctx.font = `bold ${4}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText('KNIGHT', 0, h*0.42 + 6);
-
-  // Red scanner bar (animated)
-  const scanX = Math.sin(STATE.time * 8) * (w * 0.25);
-  const scanGrad = ctx.createLinearGradient(scanX - 8, 0, scanX + 8, 0);
-  scanGrad.addColorStop(0, 'transparent');
-  scanGrad.addColorStop(0.5, '#ff2200');
-  scanGrad.addColorStop(1, 'transparent');
-  ctx.fillStyle = scanGrad;
-  ctx.fillRect(-w*0.35, -h*0.43, w*0.7, 3);
-
-  // Wheels
-  ctx.fillStyle = '#1a1a1a';
-  [[-w*0.55, -h*0.25], [w*0.55, -h*0.25], [-w*0.55, h*0.3], [w*0.55, h*0.3]].forEach(([wx,wy]) => {
-    ctx.beginPath(); ctx.ellipse(wx, wy, 6, 8, 0, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = '#444'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.ellipse(wx, wy, 4, 6, 0, 0, Math.PI*2); ctx.stroke();
+  // ── WHEELS (drawn first, behind body) ──
+  const wheelPositions = [
+    { x: -w * 0.88, y: -h * 0.38 },  // front-left
+    { x:  w * 0.88, y: -h * 0.38 },  // front-right
+    { x: -w * 0.88, y:  h * 0.32 },  // rear-left
+    { x:  w * 0.88, y:  h * 0.32 },  // rear-right
+  ];
+  wheelPositions.forEach(({x: wx, y: wy}) => {
+    ctx.fillStyle = '#0d0d0d';
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, 7, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const rimG = ctx.createRadialGradient(wx - 1, wy - 1, 1, wx, wy, 5);
+    rimG.addColorStop(0, '#777');
+    rimG.addColorStop(0.6, '#444');
+    rimG.addColorStop(1, '#1a1a1a');
+    ctx.fillStyle = rimG;
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, 4.5, 7.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 1;
+    for (let s = 0; s < 5; s++) {
+      const a = (s / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(wx + Math.cos(a) * 1.5, wy + Math.sin(a) * 2.5);
+      ctx.lineTo(wx + Math.cos(a) * 4,   wy + Math.sin(a) * 6.5);
+      ctx.stroke();
+    }
   });
+
+  // ── BODY LOWER (wide body panels, fenders) ──
+  const lowerBodyGrad = ctx.createLinearGradient(-w, 0, w, 0);
+  lowerBodyGrad.addColorStop(0,   '#0a0a0a');
+  lowerBodyGrad.addColorStop(0.15,'#1a1a1a');
+  lowerBodyGrad.addColorStop(0.5, '#252525');
+  lowerBodyGrad.addColorStop(0.85,'#1a1a1a');
+  lowerBodyGrad.addColorStop(1,   '#0a0a0a');
+  ctx.fillStyle = lowerBodyGrad;
+  ctx.beginPath();
+  ctx.moveTo(0,           -h * 0.52);
+  ctx.lineTo(-w * 0.28,   -h * 0.50);
+  ctx.lineTo(-w * 0.72,   -h * 0.42);
+  ctx.lineTo(-w * 0.88,   -h * 0.28);
+  ctx.lineTo(-w * 0.92,   -h * 0.10);
+  ctx.lineTo(-w * 0.92,    h * 0.08);
+  ctx.lineTo(-w * 0.88,    h * 0.22);
+  ctx.lineTo(-w * 0.75,    h * 0.40);
+  ctx.lineTo(-w * 0.42,    h * 0.50);
+  ctx.lineTo( 0,           h * 0.52);
+  ctx.lineTo( w * 0.42,    h * 0.50);
+  ctx.lineTo( w * 0.75,    h * 0.40);
+  ctx.lineTo( w * 0.88,    h * 0.22);
+  ctx.lineTo( w * 0.92,    h * 0.08);
+  ctx.lineTo( w * 0.92,   -h * 0.10);
+  ctx.lineTo( w * 0.88,   -h * 0.28);
+  ctx.lineTo( w * 0.72,   -h * 0.42);
+  ctx.lineTo( w * 0.28,   -h * 0.50);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── BODY UPPER HIGHLIGHT (center ridge) ──
+  const ridgeGrad = ctx.createLinearGradient(-w * 0.3, -h * 0.4, w * 0.3, h * 0.4);
+  ridgeGrad.addColorStop(0,   'rgba(80,80,80,0.0)');
+  ridgeGrad.addColorStop(0.3, 'rgba(90,90,90,0.5)');
+  ridgeGrad.addColorStop(0.5, 'rgba(120,120,120,0.7)');
+  ridgeGrad.addColorStop(0.7, 'rgba(90,90,90,0.5)');
+  ridgeGrad.addColorStop(1,   'rgba(60,60,60,0.0)');
+  ctx.fillStyle = ridgeGrad;
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.12, -h * 0.48);
+  ctx.lineTo( w * 0.12, -h * 0.48);
+  ctx.lineTo( w * 0.18,  h * 0.48);
+  ctx.lineTo(-w * 0.18,  h * 0.48);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── ROOF PANEL ──
+  const roofGrad = ctx.createLinearGradient(-w * 0.4, -h * 0.15, w * 0.4, h * 0.15);
+  roofGrad.addColorStop(0,   '#111');
+  roofGrad.addColorStop(0.35,'#2a2a2a');
+  roofGrad.addColorStop(0.5, '#333');
+  roofGrad.addColorStop(0.65,'#2a2a2a');
+  roofGrad.addColorStop(1,   '#111');
+  ctx.fillStyle = roofGrad;
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.42, -h * 0.18);
+  ctx.lineTo(-w * 0.38, -h * 0.28);
+  ctx.lineTo( w * 0.38, -h * 0.28);
+  ctx.lineTo( w * 0.42, -h * 0.18);
+  ctx.lineTo( w * 0.42,  h * 0.18);
+  ctx.lineTo( w * 0.38,  h * 0.28);
+  ctx.lineTo(-w * 0.38,  h * 0.28);
+  ctx.lineTo(-w * 0.42,  h * 0.18);
+  ctx.closePath();
+  ctx.fill();
+
+  // Roof specular highlight
+  ctx.fillStyle = 'rgba(180,180,180,0.12)';
+  ctx.beginPath();
+  ctx.ellipse(-w * 0.05, -h * 0.05, w * 0.18, h * 0.12, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── WINDSHIELD (front glass, blue-tinted) ──
+  const wshGrad = ctx.createLinearGradient(-w * 0.35, -h * 0.28, w * 0.35, -h * 0.18);
+  wshGrad.addColorStop(0,   'rgba(60,120,200,0.7)');
+  wshGrad.addColorStop(0.4, 'rgba(100,170,255,0.85)');
+  wshGrad.addColorStop(0.6, 'rgba(140,200,255,0.9)');
+  wshGrad.addColorStop(1,   'rgba(60,120,200,0.7)');
+  ctx.fillStyle = wshGrad;
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.38, -h * 0.28);
+  ctx.lineTo(-w * 0.32, -h * 0.38);
+  ctx.lineTo( w * 0.32, -h * 0.38);
+  ctx.lineTo( w * 0.38, -h * 0.28);
+  ctx.closePath();
+  ctx.fill();
+  // Windshield glare streak
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.30, -h * 0.30);
+  ctx.lineTo(-w * 0.18, -h * 0.37);
+  ctx.lineTo(-w * 0.12, -h * 0.35);
+  ctx.lineTo(-w * 0.22, -h * 0.28);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── REAR WINDOW (back glass) ──
+  const rwGrad = ctx.createLinearGradient(-w * 0.35, h * 0.18, w * 0.35, h * 0.28);
+  rwGrad.addColorStop(0,   'rgba(40,80,160,0.6)');
+  rwGrad.addColorStop(0.5, 'rgba(70,130,220,0.75)');
+  rwGrad.addColorStop(1,   'rgba(40,80,160,0.6)');
+  ctx.fillStyle = rwGrad;
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.38,  h * 0.28);
+  ctx.lineTo(-w * 0.30,  h * 0.38);
+  ctx.lineTo( w * 0.30,  h * 0.38);
+  ctx.lineTo( w * 0.38,  h * 0.28);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── FIREBIRD HOOD SCOOP (iconic Trans Am feature) ──
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.ellipse(0, -h * 0.42, w * 0.14, h * 0.07, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#0a0a0a';
+  ctx.beginPath();
+  ctx.ellipse(0, -h * 0.42, w * 0.09, h * 0.045, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(80,80,80,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(-w * 0.04, -h * 0.43, w * 0.04, h * 0.02, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── HEADLIGHTS (front) ──
+  const hlLG = ctx.createRadialGradient(-w * 0.55, -h * 0.47, 1, -w * 0.55, -h * 0.47, 7);
+  hlLG.addColorStop(0, '#ffffee');
+  hlLG.addColorStop(0.6, '#ffee88');
+  hlLG.addColorStop(1, '#aa8800');
+  ctx.fillStyle = hlLG;
+  ctx.beginPath();
+  ctx.ellipse(-w * 0.55, -h * 0.47, 7, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const hlRG = ctx.createRadialGradient(w * 0.55, -h * 0.47, 1, w * 0.55, -h * 0.47, 7);
+  hlRG.addColorStop(0, '#ffffee');
+  hlRG.addColorStop(0.6, '#ffee88');
+  hlRG.addColorStop(1, '#aa8800');
+  ctx.fillStyle = hlRG;
+  ctx.beginPath();
+  ctx.ellipse(w * 0.55, -h * 0.47, 7, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── TAIL LIGHTS (rear — iconic KITT red bars) ──
+  ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 8;
+  const tlLG = ctx.createLinearGradient(-w * 0.7, h * 0.46, -w * 0.25, h * 0.46);
+  tlLG.addColorStop(0, '#cc0000');
+  tlLG.addColorStop(0.5, '#ff3300');
+  tlLG.addColorStop(1, '#ff0000');
+  ctx.fillStyle = tlLG;
+  ctx.fillRect(-w * 0.70, h * 0.44, w * 0.44, 5);
+  const tlRG = ctx.createLinearGradient(w * 0.25, h * 0.46, w * 0.7, h * 0.46);
+  tlRG.addColorStop(0, '#ff0000');
+  tlRG.addColorStop(0.5, '#ff3300');
+  tlRG.addColorStop(1, '#cc0000');
+  ctx.fillStyle = tlRG;
+  ctx.fillRect(w * 0.26, h * 0.44, w * 0.44, 5);
+  ctx.shadowBlur = 0;
+
+  // ── KITT RED SCANNER BAR (front nose, animated) ──
+  const scanX = Math.sin(STATE.time * 8) * (w * 0.38);
+  ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 12;
+  const scanGrad = ctx.createLinearGradient(scanX - 12, 0, scanX + 12, 0);
+  scanGrad.addColorStop(0, 'rgba(255,0,0,0)');
+  scanGrad.addColorStop(0.3, 'rgba(255,40,0,0.6)');
+  scanGrad.addColorStop(0.5, 'rgba(255,60,0,1.0)');
+  scanGrad.addColorStop(0.7, 'rgba(255,40,0,0.6)');
+  scanGrad.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.fillStyle = scanGrad;
+  ctx.fillRect(-w * 0.58, -h * 0.495, w * 1.16, 4);
+  ctx.shadowBlur = 0;
+
+  // ── LICENSE PLATE (rear) ──
+  ctx.fillStyle = '#cccccc';
+  ctx.fillRect(-w * 0.22, h * 0.46, w * 0.44, 7);
+  ctx.fillStyle = '#003399';
+  ctx.font = 'bold 5px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('KNIGHT', 0, h * 0.46 + 5.5);
+
+  // ── BODY EDGE OUTLINE (subtle) ──
+  ctx.strokeStyle = 'rgba(80,80,80,0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0,           -h * 0.52);
+  ctx.lineTo(-w * 0.28,   -h * 0.50);
+  ctx.lineTo(-w * 0.72,   -h * 0.42);
+  ctx.lineTo(-w * 0.88,   -h * 0.28);
+  ctx.lineTo(-w * 0.92,   -h * 0.10);
+  ctx.lineTo(-w * 0.92,    h * 0.08);
+  ctx.lineTo(-w * 0.88,    h * 0.22);
+  ctx.lineTo(-w * 0.75,    h * 0.40);
+  ctx.lineTo(-w * 0.42,    h * 0.50);
+  ctx.lineTo( 0,           h * 0.52);
+  ctx.lineTo( w * 0.42,    h * 0.50);
+  ctx.lineTo( w * 0.75,    h * 0.40);
+  ctx.lineTo( w * 0.88,    h * 0.22);
+  ctx.lineTo( w * 0.92,    h * 0.08);
+  ctx.lineTo( w * 0.92,   -h * 0.10);
+  ctx.lineTo( w * 0.88,   -h * 0.28);
+  ctx.lineTo( w * 0.72,   -h * 0.42);
+  ctx.lineTo( w * 0.28,   -h * 0.50);
+  ctx.closePath();
+  ctx.stroke();
 
   ctx.restore();
 }
 
 // ── KITT REAR VIEW (3rd-person street view) ───────────────────────────────────
 function drawKITTRear(cx, cy, steer=0, speed=0) {
+  // High-quality KITT rear view (1982 Pontiac Trans Am)
   ctx.save();
   ctx.translate(cx, cy);
-
-  const w = 90, h = 55;
-  const lean = steer * 4;
+  const w = 110, h = 68;
+  const lean = steer * 5;
   ctx.translate(lean, 0);
 
-  // Shadow on ground
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.beginPath(); ctx.ellipse(0, h*0.15, w*0.7, 12, 0, 0, Math.PI*2); ctx.fill();
+  // ── GROUND SHADOW ──
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(lean * 0.5, h * 0.22, w * 0.75, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Exhaust particles at speed
-  if (speed > 60) {
-    for (let i = 0; i < 3; i++) {
-      const ex = (Math.random()-0.5)*20;
-      const ey = h*0.1 + Math.random()*15;
-      ctx.globalAlpha = 0.3 + Math.random()*0.3;
-      ctx.fillStyle = '#888';
-      ctx.beginPath(); ctx.arc(ex, ey, 3+Math.random()*4, 0, Math.PI*2); ctx.fill();
+  // ── EXHAUST SMOKE at speed ──
+  if (speed > 50) {
+    for (let i = 0; i < 4; i++) {
+      const ex = (Math.random() - 0.5) * 24;
+      const ey = h * 0.18 + Math.random() * 20;
+      ctx.globalAlpha = 0.15 + Math.random() * 0.2;
+      ctx.fillStyle = '#aaaaaa';
+      ctx.beginPath();
+      ctx.arc(ex, ey, 4 + Math.random() * 6, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.globalAlpha = 1;
   }
 
-  // Main body
-  const bodyG = ctx.createLinearGradient(-w, -h*0.5, w, -h*0.5);
-  bodyG.addColorStop(0, '#0a0a0a');
-  bodyG.addColorStop(0.25, '#1e1e1e');
-  bodyG.addColorStop(0.5, '#2a2a2a');
-  bodyG.addColorStop(0.75, '#1e1e1e');
-  bodyG.addColorStop(1, '#0a0a0a');
+  // ── LOWER BODY / SKIRT ──
+  const skirtG = ctx.createLinearGradient(-w, 0, w, 0);
+  skirtG.addColorStop(0,   '#050505');
+  skirtG.addColorStop(0.2, '#111');
+  skirtG.addColorStop(0.5, '#1a1a1a');
+  skirtG.addColorStop(0.8, '#111');
+  skirtG.addColorStop(1,   '#050505');
+  ctx.fillStyle = skirtG;
+  ctx.beginPath();
+  ctx.moveTo(-w,      h * 0.18);
+  ctx.lineTo(-w,      h * 0.0);
+  ctx.lineTo(-w*0.92, -h * 0.12);
+  ctx.lineTo(-w*0.88, -h * 0.20);
+  ctx.lineTo( w*0.88, -h * 0.20);
+  ctx.lineTo( w*0.92, -h * 0.12);
+  ctx.lineTo( w,      h * 0.0);
+  ctx.lineTo( w,      h * 0.18);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── MAIN BODY (rear panel) ──
+  const bodyG = ctx.createLinearGradient(-w, -h * 0.5, w, -h * 0.5);
+  bodyG.addColorStop(0,    '#070707');
+  bodyG.addColorStop(0.12, '#151515');
+  bodyG.addColorStop(0.28, '#222');
+  bodyG.addColorStop(0.5,  '#2e2e2e');
+  bodyG.addColorStop(0.72, '#222');
+  bodyG.addColorStop(0.88, '#151515');
+  bodyG.addColorStop(1,    '#070707');
   ctx.fillStyle = bodyG;
   ctx.beginPath();
-  ctx.moveTo(-w, h*0.1);         // rear bottom left
-  ctx.lineTo(-w*0.95, -h*0.15);  // rear mid left
-  ctx.lineTo(-w*0.7,  -h*0.55);  // roof left
-  ctx.lineTo(-w*0.35, -h*0.75);  // roof top left
-  ctx.lineTo( w*0.35, -h*0.75);  // roof top right
-  ctx.lineTo( w*0.7,  -h*0.55);  // roof right
-  ctx.lineTo( w*0.95, -h*0.15);  // rear mid right
-  ctx.lineTo( w,       h*0.1);   // rear bottom right
-  ctx.closePath(); ctx.fill();
+  ctx.moveTo(-w*0.88, -h * 0.20);  // lower-left
+  ctx.lineTo(-w*0.96, -h * 0.42);  // mid-left
+  ctx.lineTo(-w*0.82, -h * 0.62);  // upper-left shoulder
+  ctx.lineTo(-w*0.62, -h * 0.78);  // roof-left
+  ctx.lineTo(-w*0.32, -h * 0.92);  // roof-top-left
+  ctx.lineTo( w*0.32, -h * 0.92);  // roof-top-right
+  ctx.lineTo( w*0.62, -h * 0.78);  // roof-right
+  ctx.lineTo( w*0.82, -h * 0.62);  // upper-right shoulder
+  ctx.lineTo( w*0.96, -h * 0.42);  // mid-right
+  ctx.lineTo( w*0.88, -h * 0.20);  // lower-right
+  ctx.closePath();
+  ctx.fill();
 
-  // Roof highlight
-  const roofG = ctx.createLinearGradient(-w*0.4, -h*0.8, w*0.4, -h*0.5);
-  roofG.addColorStop(0, 'rgba(80,80,80,0.3)');
-  roofG.addColorStop(0.5, 'rgba(120,120,120,0.4)');
-  roofG.addColorStop(1, 'rgba(40,40,40,0.1)');
+  // ── BODY HIGHLIGHT (glossy paint sheen) ──
+  const shineG = ctx.createLinearGradient(-w * 0.5, -h * 0.9, w * 0.5, -h * 0.2);
+  shineG.addColorStop(0,   'rgba(0,0,0,0)');
+  shineG.addColorStop(0.3, 'rgba(60,60,60,0.15)');
+  shineG.addColorStop(0.5, 'rgba(100,100,100,0.25)');
+  shineG.addColorStop(0.7, 'rgba(60,60,60,0.15)');
+  shineG.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = shineG;
+  ctx.beginPath();
+  ctx.moveTo(-w*0.88, -h * 0.20);
+  ctx.lineTo(-w*0.96, -h * 0.42);
+  ctx.lineTo(-w*0.82, -h * 0.62);
+  ctx.lineTo(-w*0.62, -h * 0.78);
+  ctx.lineTo(-w*0.32, -h * 0.92);
+  ctx.lineTo( w*0.32, -h * 0.92);
+  ctx.lineTo( w*0.62, -h * 0.78);
+  ctx.lineTo( w*0.82, -h * 0.62);
+  ctx.lineTo( w*0.96, -h * 0.42);
+  ctx.lineTo( w*0.88, -h * 0.20);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── ROOF PANEL ──
+  const roofG = ctx.createLinearGradient(-w * 0.35, -h * 0.95, w * 0.35, -h * 0.75);
+  roofG.addColorStop(0,   '#1a1a1a');
+  roofG.addColorStop(0.4, '#303030');
+  roofG.addColorStop(0.6, '#383838');
+  roofG.addColorStop(1,   '#1a1a1a');
   ctx.fillStyle = roofG;
   ctx.beginPath();
-  ctx.moveTo(-w*0.7, -h*0.55);
-  ctx.lineTo(-w*0.35, -h*0.75);
-  ctx.lineTo( w*0.35, -h*0.75);
-  ctx.lineTo( w*0.7,  -h*0.55);
-  ctx.closePath(); ctx.fill();
+  ctx.moveTo(-w*0.62, -h * 0.78);
+  ctx.lineTo(-w*0.32, -h * 0.92);
+  ctx.lineTo( w*0.32, -h * 0.92);
+  ctx.lineTo( w*0.62, -h * 0.78);
+  ctx.closePath();
+  ctx.fill();
+  // Roof specular
+  ctx.fillStyle = 'rgba(200,200,200,0.08)';
+  ctx.beginPath();
+  ctx.ellipse(-w * 0.08, -h * 0.85, w * 0.22, h * 0.06, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Rear window
-  const rwG = ctx.createLinearGradient(-w*0.5, -h*0.6, w*0.5, -h*0.2);
-  rwG.addColorStop(0, 'rgba(60,120,200,0.6)');
-  rwG.addColorStop(1, 'rgba(20,60,120,0.4)');
+  // ── REAR WINDOW (fastback style) ──
+  const rwG = ctx.createLinearGradient(-w * 0.55, -h * 0.78, w * 0.55, -h * 0.22);
+  rwG.addColorStop(0,   'rgba(30,70,160,0.75)');
+  rwG.addColorStop(0.3, 'rgba(60,120,220,0.85)');
+  rwG.addColorStop(0.6, 'rgba(80,150,240,0.9)');
+  rwG.addColorStop(1,   'rgba(20,50,130,0.6)');
   ctx.fillStyle = rwG;
   ctx.beginPath();
-  ctx.moveTo(-w*0.62, -h*0.5);
-  ctx.lineTo(-w*0.35, -h*0.72);
-  ctx.lineTo( w*0.35, -h*0.72);
-  ctx.lineTo( w*0.62, -h*0.5);
-  ctx.lineTo( w*0.55, -h*0.2);
-  ctx.lineTo(-w*0.55, -h*0.2);
-  ctx.closePath(); ctx.fill();
-  // Window reflection
-  ctx.fillStyle = 'rgba(200,220,255,0.15)';
+  ctx.moveTo(-w*0.78, -h * 0.60);
+  ctx.lineTo(-w*0.58, -h * 0.76);
+  ctx.lineTo(-w*0.30, -h * 0.90);
+  ctx.lineTo( w*0.30, -h * 0.90);
+  ctx.lineTo( w*0.58, -h * 0.76);
+  ctx.lineTo( w*0.78, -h * 0.60);
+  ctx.lineTo( w*0.68, -h * 0.24);
+  ctx.lineTo(-w*0.68, -h * 0.24);
+  ctx.closePath();
+  ctx.fill();
+  // Window glare
+  ctx.fillStyle = 'rgba(200,230,255,0.18)';
   ctx.beginPath();
-  ctx.moveTo(-w*0.55, -h*0.5);
-  ctx.lineTo(-w*0.3,  -h*0.68);
-  ctx.lineTo(-w*0.1,  -h*0.65);
-  ctx.lineTo(-w*0.15, -h*0.45);
-  ctx.closePath(); ctx.fill();
-
-  // Tail lights — iconic KITT red bars
-  const tlG = ctx.createLinearGradient(-w, 0, -w*0.6, 0);
-  tlG.addColorStop(0, '#ff0000');
-  tlG.addColorStop(0.5, '#ff4400');
-  tlG.addColorStop(1, '#cc0000');
-  ctx.fillStyle = tlG;
-  ctx.fillRect(-w*0.98, -h*0.08, w*0.32, 8);
-  ctx.fillRect(-w*0.98, h*0.0,   w*0.32, 5);
-  // Right tail lights
-  const trG = ctx.createLinearGradient(w*0.6, 0, w, 0);
-  trG.addColorStop(0, '#cc0000');
-  trG.addColorStop(0.5, '#ff4400');
-  trG.addColorStop(1, '#ff0000');
-  ctx.fillStyle = trG;
-  ctx.fillRect(w*0.66, -h*0.08, w*0.32, 8);
-  ctx.fillRect(w*0.66, h*0.0,   w*0.32, 5);
-  // Tail light glow
-  ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 15;
-  ctx.fillStyle = '#ff3300';
-  ctx.fillRect(-w*0.98, -h*0.08, w*0.32, 8);
-  ctx.fillRect(w*0.66, -h*0.08, w*0.32, 8);
-  ctx.shadowBlur = 0;
-
-  // KNIGHT license plate
-  ctx.fillStyle = '#dddddd';
-  ctx.fillRect(-w*0.15, h*0.0, w*0.3, 14);
-  ctx.fillStyle = '#003399';
-  ctx.font = 'bold 9px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('KNIGHT', 0, h*0.0 + 10);
-
-  // Bumper
-  ctx.fillStyle = '#1a1a1a';
+  ctx.moveTo(-w*0.70, -h * 0.62);
+  ctx.lineTo(-w*0.52, -h * 0.76);
+  ctx.lineTo(-w*0.28, -h * 0.88);
+  ctx.lineTo(-w*0.08, -h * 0.84);
+  ctx.lineTo(-w*0.18, -h * 0.58);
+  ctx.lineTo(-w*0.60, -h * 0.44);
+  ctx.closePath();
+  ctx.fill();
+  // Window center divider bar
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(-w*0.9, h*0.1);
-  ctx.lineTo( w*0.9, h*0.1);
-  ctx.lineTo( w*0.85, h*0.2);
-  ctx.lineTo(-w*0.85, h*0.2);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+  ctx.moveTo(0, -h * 0.90);
+  ctx.lineTo(0, -h * 0.24);
   ctx.stroke();
 
-  // Rear diffuser vents
-  for (let i = -3; i <= 3; i++) {
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(i*12 - 4, h*0.12, 7, 6);
+  // ── C-PILLAR / QUARTER PANEL ──
+  ctx.fillStyle = '#0d0d0d';
+  ctx.beginPath();
+  ctx.moveTo(-w*0.96, -h * 0.42);
+  ctx.lineTo(-w*0.82, -h * 0.62);
+  ctx.lineTo(-w*0.78, -h * 0.60);
+  ctx.lineTo(-w*0.68, -h * 0.24);
+  ctx.lineTo(-w*0.88, -h * 0.20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo( w*0.96, -h * 0.42);
+  ctx.lineTo( w*0.82, -h * 0.62);
+  ctx.lineTo( w*0.78, -h * 0.60);
+  ctx.lineTo( w*0.68, -h * 0.24);
+  ctx.lineTo( w*0.88, -h * 0.20);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── TAIL LIGHTS — iconic KITT full-width red bar ──
+  // The real KITT had distinctive wrap-around tail lights
+  ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 20;
+  // Left tail light assembly
+  const tlLG = ctx.createLinearGradient(-w, -h * 0.05, -w * 0.55, -h * 0.05);
+  tlLG.addColorStop(0,   '#880000');
+  tlLG.addColorStop(0.3, '#cc0000');
+  tlLG.addColorStop(0.7, '#ff3300');
+  tlLG.addColorStop(1,   '#ff5500');
+  ctx.fillStyle = tlLG;
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.98, -h * 0.18);
+  ctx.lineTo(-w * 0.55, -h * 0.18);
+  ctx.lineTo(-w * 0.55, -h * 0.02);
+  ctx.lineTo(-w * 0.98, -h * 0.02);
+  ctx.closePath();
+  ctx.fill();
+  // Right tail light assembly
+  const tlRG = ctx.createLinearGradient(w * 0.55, -h * 0.05, w, -h * 0.05);
+  tlRG.addColorStop(0,   '#ff5500');
+  tlRG.addColorStop(0.3, '#ff3300');
+  tlRG.addColorStop(0.7, '#cc0000');
+  tlRG.addColorStop(1,   '#880000');
+  ctx.fillStyle = tlRG;
+  ctx.beginPath();
+  ctx.moveTo( w * 0.55, -h * 0.18);
+  ctx.lineTo( w * 0.98, -h * 0.18);
+  ctx.lineTo( w * 0.98, -h * 0.02);
+  ctx.lineTo( w * 0.55, -h * 0.02);
+  ctx.closePath();
+  ctx.fill();
+  // Tail light inner bright strip
+  ctx.fillStyle = 'rgba(255,100,0,0.6)';
+  ctx.fillRect(-w * 0.96, -h * 0.15, w * 0.40, 4);
+  ctx.fillRect( w * 0.56, -h * 0.15, w * 0.40, 4);
+  ctx.shadowBlur = 0;
+
+  // ── CENTER PANEL (between tail lights) ──
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(-w * 0.54, -h * 0.20, w * 1.08, h * 0.20);
+
+  // ── LICENSE PLATE ──
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillRect(-w * 0.18, -h * 0.16, w * 0.36, h * 0.14);
+  ctx.fillStyle = '#003399';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('KNIGHT', 0, -h * 0.06);
+  // Plate border
+  ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1;
+  ctx.strokeRect(-w * 0.18, -h * 0.16, w * 0.36, h * 0.14);
+
+  // ── REAR BUMPER ──
+  const bumpG = ctx.createLinearGradient(-w, h * 0.12, w, h * 0.12);
+  bumpG.addColorStop(0,   '#0a0a0a');
+  bumpG.addColorStop(0.15,'#1e1e1e');
+  bumpG.addColorStop(0.5, '#2a2a2a');
+  bumpG.addColorStop(0.85,'#1e1e1e');
+  bumpG.addColorStop(1,   '#0a0a0a');
+  ctx.fillStyle = bumpG;
+  ctx.beginPath();
+  ctx.moveTo(-w,      h * 0.18);
+  ctx.lineTo(-w*0.92, h * 0.0);
+  ctx.lineTo( w*0.92, h * 0.0);
+  ctx.lineTo( w,      h * 0.18);
+  ctx.lineTo( w,      h * 0.22);
+  ctx.lineTo(-w,      h * 0.22);
+  ctx.closePath();
+  ctx.fill();
+  // Bumper chrome strip
+  ctx.strokeStyle = 'rgba(120,120,120,0.5)'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.88, h * 0.02);
+  ctx.lineTo( w * 0.88, h * 0.02);
+  ctx.stroke();
+  // Diffuser vents
+  ctx.fillStyle = '#050505';
+  for (let i = -4; i <= 4; i++) {
+    if (Math.abs(i) < 2) continue; // skip center (license plate area)
+    ctx.fillRect(i * 14 - 5, h * 0.04, 9, 8);
   }
 
-  // Wheels
-  const wheelY = h*0.15;
-  [[-w*0.82, wheelY], [w*0.82, wheelY]].forEach(([wx, wy]) => {
+  // ── WHEELS ──
+  const wheelY = h * 0.16;
+  [[-w * 0.85, wheelY], [w * 0.85, wheelY]].forEach(([wx, wy]) => {
+    // Tire shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(wx + 3, wy + 4, 20, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
     // Tire
-    ctx.fillStyle = '#111';
-    ctx.beginPath(); ctx.ellipse(wx, wy, 18, 14, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#0d0d0d';
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, 22, 17, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Tire tread highlight
+    ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, 21, 16, 0, 0, Math.PI * 2);
+    ctx.stroke();
     // Rim
-    const rimG = ctx.createRadialGradient(wx, wy, 2, wx, wy, 12);
-    rimG.addColorStop(0, '#888');
-    rimG.addColorStop(0.5, '#555');
-    rimG.addColorStop(1, '#222');
+    const rimG = ctx.createRadialGradient(wx - 2, wy - 2, 2, wx, wy, 15);
+    rimG.addColorStop(0,   '#aaaaaa');
+    rimG.addColorStop(0.3, '#777');
+    rimG.addColorStop(0.7, '#444');
+    rimG.addColorStop(1,   '#1a1a1a');
     ctx.fillStyle = rimG;
-    ctx.beginPath(); ctx.ellipse(wx, wy, 12, 9, 0, 0, Math.PI*2); ctx.fill();
-    // Spokes
-    ctx.strokeStyle = '#777'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, 15, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Rim spokes (5-spoke alloy)
+    ctx.strokeStyle = '#888'; ctx.lineWidth = 2.5;
+    const spinAngle = STATE.time * speed * 0.008;
     for (let s = 0; s < 5; s++) {
-      const a = (s / 5) * Math.PI * 2 + STATE.time * speed * 0.01;
+      const a = (s / 5) * Math.PI * 2 + spinAngle;
       ctx.beginPath();
-      ctx.moveTo(wx, wy);
-      ctx.lineTo(wx + Math.cos(a)*10, wy + Math.sin(a)*7);
+      ctx.moveTo(wx + Math.cos(a) * 3,  wy + Math.sin(a) * 2.5);
+      ctx.lineTo(wx + Math.cos(a) * 13, wy + Math.sin(a) * 10);
       ctx.stroke();
     }
+    // Hub cap center
+    ctx.fillStyle = '#555';
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, 3, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
   });
+
+  // ── BODY OUTLINE ──
+  ctx.strokeStyle = 'rgba(60,60,60,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-w*0.88, -h * 0.20);
+  ctx.lineTo(-w*0.96, -h * 0.42);
+  ctx.lineTo(-w*0.82, -h * 0.62);
+  ctx.lineTo(-w*0.62, -h * 0.78);
+  ctx.lineTo(-w*0.32, -h * 0.92);
+  ctx.lineTo( w*0.32, -h * 0.92);
+  ctx.lineTo( w*0.62, -h * 0.78);
+  ctx.lineTo( w*0.82, -h * 0.62);
+  ctx.lineTo( w*0.96, -h * 0.42);
+  ctx.lineTo( w*0.88, -h * 0.20);
+  ctx.closePath();
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -2726,7 +3053,7 @@ function drawTopDownView(W, H) {
   ctx.globalAlpha = 1;
 
   // KITT (center)
-  drawKITTTopDown(W/2, H/2, 1.1);
+  drawKITTTopDown(W/2, H/2, 1.4);
 
   // KITT shadow/glow
   ctx.shadowColor = '#00ff44'; ctx.shadowBlur = 20;
@@ -3402,6 +3729,14 @@ function goToMenu() {
   playMusic('music_main');
 }
 
+function exitToMenu() {
+  STATE.running = false;
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  stopMusic();
+  document.getElementById('viewBar').style.display = 'none';
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('titleScreen').style.display = 'flex';
+}
 function setView(v) {
   currentView = v;
   STATE.view = v;
