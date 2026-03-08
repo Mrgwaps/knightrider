@@ -703,13 +703,13 @@ function addScorePopup(x, z, val) {
 const ROAD_PALETTES = [
   // Level 1: LA Midday — bright California sun, palm-lined boulevard
   { road:'#2a2a2a', rumble1:'#e8e8e8', rumble2:'#d0d0d0', lane:'#FFFF44',
-    grass1:'#a09880', grass2:'#908870',
+    grass1:'#6a8060', grass2:'#5a7050',
     sky1:'#2a7fc4', sky2:'#7abee0',
     sidewalk:'#c8c2b2', curb:'#e0dac8',
     roadSheen:'rgba(255,255,255,0.04)' },
   // Level 2: LA Sunset — golden hour, downtown skyline
   { road:'#252520', rumble1:'#e8c080', rumble2:'#d0a860', lane:'#FFE044',
-    grass1:'#907060', grass2:'#806050',
+    grass1:'#8a7040', grass2:'#7a6030',
     sky1:'#d84a18', sky2:'#f09030',
     sidewalk:'#c0b89a', curb:'#d8ceb0',
     roadSheen:'rgba(255,160,40,0.06)' },
@@ -1553,7 +1553,7 @@ function drawKITTTopDown(cx, cy, scale = 1) {
 function drawKITTRear(cx, cy, scale = 1) {
   const img = KITT_SPRITES.rear;
   // Sprite aspect ratio: 512x512 square (the AI-generated sprite)
-  const sw = 220 * scale;
+  const sw = 260 * scale;
   const sh = sw;  // square sprite
   const braking = (keys['KeyS'] || keys['ArrowDown']);
   const boosting = kitt.boosting;
@@ -1569,13 +1569,15 @@ function drawKITTRear(cx, cy, scale = 1) {
 
   // Body roll offset — lean slightly into turns
   const rollX = (kitt.steer || 0) * 6 * scale;
+  const rollAngle = -(kitt.steer || 0) * 0.06; // subtle lean into corners
 
   // Draw the sprite — wheels are part of the image at bottom corners
   if (img && img.complete && img.naturalWidth > 0) {
     ctx.save();
-    // Subtle body roll via translate
-    ctx.translate(rollX, 0);
-    ctx.drawImage(img, cx - sw / 2, cy - sh / 2, sw, sh);
+    // Body roll: rotate around center of car
+    ctx.translate(cx + rollX, cy - sh * 0.05);
+    ctx.rotate(rollAngle);
+    ctx.drawImage(img, -sw / 2, -sh / 2, sw, sh);
     ctx.restore();
   } else {
     // Fallback: plain black rectangle
@@ -2116,8 +2118,11 @@ function drawMichaelPortrait(cx, cy, isKITT) {
 
 function drawCockpitView(W, H) {
   const palette = ROAD_PALETTES[Math.min(STATE.level-1, 3)];
+  const t = STATE.time;
 
   // ── WINDSHIELD ROAD VIEW ──────────────────────────────────────────────────
+  // KITT scanner bar sweep — subtle red glow at top of windshield
+  const scanPhase = (t * 0.7) % 1;
   // The windshield is a trapezoid: wide at top, narrower at dash line
   const windL  = W * 0.12,  windR  = W * 0.88;
   const windTL = W * 0.04,  windTR = W * 0.96;
@@ -2132,6 +2137,13 @@ function drawCockpitView(W, H) {
   ctx.closePath();
   ctx.clip();
   drawPseudo3DRoad(kitt.x, kitt.z, CAM_HEIGHT * 0.52, W, dashY, palette);
+  // KITT scanner sweep glow on windshield (subtle red sweep)
+  const scanGlowX = windTL + scanPhase * (windTR - windTL);
+  const scanGlowGrad = ctx.createRadialGradient(scanGlowX, H * 0.05, 0, scanGlowX, H * 0.05, 80);
+  scanGlowGrad.addColorStop(0, 'rgba(255,20,0,0.15)');
+  scanGlowGrad.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.fillStyle = scanGlowGrad;
+  ctx.fillRect(scanGlowX - 80, 0, 160, H * 0.18);
   // Enemies through windshield
   const camZ = kitt.z;
   enemies.forEach(e => {
@@ -2531,27 +2543,44 @@ function drawKITTLeftMain(px, py, pw, ph) {
   }
   cy += 8;
 
-  // ── VOICE SYNTHESIZER BARS ──
-  const vmH = 20, vmW = pw - 4;
-  ctx.fillStyle = '#030303';
+  // ── VOICE SYNTHESIZER BARS (authentic KITT style) ──
+  const vmH = 28, vmW = pw - 4;
+  // Dark background with subtle green tint
+  ctx.fillStyle = '#000a00';
   ctx.fillRect(px + 2, cy, vmW, vmH);
-  ctx.strokeStyle = '#1a1a00'; ctx.lineWidth = 1;
+  ctx.strokeStyle = '#004400'; ctx.lineWidth = 1;
   ctx.strokeRect(px + 2, cy, vmW, vmH);
-  const barCount = Math.floor(vmW / 4);
+  // "VOICE" label
+  ctx.fillStyle = '#00aa44'; ctx.font = 'bold 5px monospace';
+  ctx.textAlign = 'left'; ctx.fillText('VOICE SYNTH', px + 3, cy + 5);
+  const barCount = Math.floor((vmW - 4) / 3);
   const voiceActive = dialogue.active && dialogue.speaker === 'KITT';
+  // Idle: engine vibration pattern. Active: speech pattern
   for (let b = 0; b < barCount; b++) {
-    const bx = px + 2 + b * 4;
+    const bx = px + 3 + b * 3;
     let bh;
     if (voiceActive) {
-      bh = (Math.sin(b * 0.9 + t * 20) * 0.45 + 0.55) * vmH * 0.9;
-      bh = Math.max(2, bh);
+      // Speech: dramatic peaks with multiple harmonics
+      const wave1 = Math.sin(b * 0.7 + t * 25) * 0.4;
+      const wave2 = Math.sin(b * 1.4 + t * 18) * 0.25;
+      const wave3 = Math.sin(b * 2.1 + t * 35) * 0.15;
+      bh = Math.max(2, (0.4 + wave1 + wave2 + wave3) * (vmH - 8));
     } else {
-      // Idle: slow low-level flutter
-      bh = 2 + Math.abs(Math.sin(b * 1.3 + t * 2)) * vmH * 0.15;
+      // Idle: low flutter representing engine hum
+      bh = 2 + Math.abs(Math.sin(b * 1.8 + t * 3)) * (vmH - 8) * 0.18;
     }
-    const bColor = bh > vmH * 0.75 ? '#ff0000' : bh > vmH * 0.45 ? '#ffaa00' : '#00ff44';
+    // Color: green at bottom, yellow in middle, red at top (like real KITT)
+    const frac = bh / (vmH - 8);
+    let bColor;
+    if (frac > 0.85) bColor = '#ff2200';
+    else if (frac > 0.65) bColor = '#ffcc00';
+    else bColor = '#00ff44';
+    // Draw bar from bottom up
     ctx.fillStyle = bColor;
-    ctx.fillRect(bx, cy + vmH - bh, 3, bh);
+    ctx.fillRect(bx, cy + vmH - 2 - bh, 2, bh);
+    // Dim reflection
+    ctx.fillStyle = 'rgba(0,255,68,0.08)';
+    ctx.fillRect(bx, cy + 7, 2, vmH - 9 - bh > 0 ? vmH - 9 - bh : 0);
   }
   cy += vmH + 3;
 
@@ -3205,7 +3234,7 @@ function drawStreetView(W, H) {
   // Draw KITT (rear view, centered at bottom)
   const kittScreenX = W/2 + kitt.steer * 40;
   const kittBobY = (kitt.suspBounce || 0) * 3;  // suspension bob
-  const kittScreenY = H * 0.78;
+  const kittScreenY = H * 0.82;
   drawKITTRear(kittScreenX, kittScreenY + (kitt.suspBounce || 0) * 2, 1.0);  // scale=1, full size with suspension bob
 
   // Speed lines when boosting
@@ -3253,7 +3282,7 @@ function drawTopDownView(W, H) {
   const tdPal = ROAD_PALETTES[Math.min(STATE.level - 1, 3)];
 
   // ── CALIFORNIA CITY GRID BACKGROUND ──
-  ctx.fillStyle = '#7a7a7a';  // City concrete ground
+  ctx.fillStyle = tdPal.grass1 || '#7a7a7a';  // Level-appropriate ground color
   ctx.fillRect(0, 0, W, H);
   // City block grid lines
   const blockSize = 110;
@@ -3592,6 +3621,7 @@ function updateKITT(dt) {
   const rpmLag = kitt.gearShiftTimer > 0.1 ? 8 : 4;
   kitt.rpm += (targetRPM - kitt.rpm) * Math.min(1, rpmLag * dt);
   kitt.rpm = Math.max(700, Math.min(9000, kitt.rpm));
+  if (kitt.turboActive) kitt.rpm = Math.min(9000, kitt.rpm + 800);
   // Update ancillary gauges
   kitt.oilPsi  = 40 + (kitt.rpm / 9000) * 25 + Math.sin(STATE.time * 2) * 2;
   kitt.tempF   = 185 + (kitt.speed / MAX_SPEED) * 30 + (kitt.boosting ? 15 : 0);
